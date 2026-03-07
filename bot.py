@@ -11,6 +11,7 @@ from backend.handlers import CommandHandler as BotCommandHandler
 from backend.parser import MessageParser
 from backend.ai_processor import AIProcessor
 from backend.notifier import Notifier
+from backend.security import SecurityManager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Configure logging
@@ -18,7 +19,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
-logger = logging.getLogger(__name__)
+# Logger global será reemplazado por instancia en __init__
+# logger = logging.getLogger(__name__)
 
 
 class MovieNotifierBot:
@@ -33,6 +35,14 @@ class MovieNotifierBot:
 
         if not self.telegram_token or not self.tmdb_api_key:
             raise ValueError("TELEGRAM_BOT_TOKEN y TMDB_API_KEY son requeridos en .env")
+
+        # Configurar security manager
+        self.security_manager = SecurityManager()
+        self.security_manager.add_sensitive_key(self.telegram_token)
+        self.security_manager.add_sensitive_key(self.tmdb_api_key)
+
+        # Logger con sanitización
+        self.logger = self.security_manager.get_sanitized_logger(__name__)
 
         # Inicializar componentes
         self.storage_path = "data/movies.json"
@@ -77,7 +87,8 @@ Usa /help para ver todos los comandos disponibles."""
 
             await update.message.reply_text(response, parse_mode="Markdown")
         except Exception as e:
-            logger.error(f"Error procesando mensaje: {e}")
+            sanitized_error = self.security_manager.sanitize(str(e))
+            self.logger.error(f"Error procesando mensaje: {sanitized_error}")
             await update.message.reply_text("❌ Hubo un error procesando tu mensaje.")
 
     async def _handle_command(self, parsed: dict) -> str:
@@ -101,13 +112,13 @@ Usa /help para ver todos los comandos disponibles."""
             else:
                 return f"❌ Comando desconocido: /{command}. Usa /help para ver los comandos disponibles."
         except Exception as e:
-            logger.error(f"Error en comando {command}: {e}")
+            self.logger.error(f"Error en comando {command}: {e}")
             return f"❌ Error ejecutando comando: {str(e)}"
 
     async def check_releases_job(self, context: ContextTypes.DEFAULT_TYPE):
         """Job que corre semanalmente para chequear nuevos estrenos"""
         try:
-            logger.info("Ejecutando check de nuevos estrenos...")
+            self.logger.info("Ejecutando check de nuevos estrenos...")
 
             # Obtener nuevos estrenos
             releases = self.notifier.check_new_releases()
@@ -131,11 +142,11 @@ Usa /help para ver todos los comandos disponibles."""
                             parse_mode="Markdown"
                         )
                     except Exception as e:
-                        logger.error(f"Error enviando notificación: {e}")
+                        self.logger.error(f"Error enviando notificación: {e}")
             else:
-                logger.info("No hay nuevos estrenos o TELEGRAM_USER_ID no está configurado")
+                self.logger.info("No hay nuevos estrenos o TELEGRAM_USER_ID no está configurado")
         except Exception as e:
-            logger.error(f"Error en check_releases_job: {e}")
+            self.logger.error(f"Error en check_releases_job: {e}")
 
     async def setup_scheduler(self):
         """Configurar APScheduler para ejecutar job cada 7 días"""
@@ -151,7 +162,7 @@ Usa /help para ver todos los comandos disponibles."""
         )
 
         scheduler.start()
-        logger.info("Scheduler configurado para ejecutar cada 7 días")
+        self.logger.info("Scheduler configurado para ejecutar cada 7 días")
 
     async def setup_handlers(self):
         """Agregar handlers de Telegram"""
@@ -196,17 +207,17 @@ Usa /help para ver todos los comandos disponibles."""
             await self.setup_handlers()
 
             # Iniciar bot
-            logger.info("Iniciando Movie Notifier Bot...")
+            self.logger.info("Iniciando Movie Notifier Bot...")
             await self.app.initialize()
             await self.app.start()
             await self.app.updater.start_polling()
 
-            logger.info("Bot en funcionamiento. Presiona Ctrl+C para detener.")
+            self.logger.info("Bot en funcionamiento. Presiona Ctrl+C para detener.")
 
             # Mantener bot activo
             await asyncio.Event().wait()
         except Exception as e:
-            logger.error(f"Error iniciando bot: {e}")
+            self.logger.error(f"Error iniciando bot: {e}")
             raise
         finally:
             if self.app:
@@ -221,6 +232,8 @@ async def main():
 
 
 if __name__ == "__main__":
+    # Logger global para la función main
+    logger = logging.getLogger(__name__)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
