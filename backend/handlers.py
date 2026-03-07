@@ -53,30 +53,49 @@ class CommandHandler:
         return f"✅ Monitoreando a {actor_name} 👤\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
     def handle_list(self, args: List[str] = None) -> str:
-        """Handle /list command - show all movies and actors"""
+        """Handle /list command - show movies, actors, or both"""
         movies = self.storage.get_movies()
         actors = self.storage.get_actors()
 
+        # Determinar qué mostrar
+        filter_type = "all"
+        if args and len(args) > 0:
+            filter_type = args[0].lower()
+
         # DEBUG LOGS
         logger.info(f"[/list] BASE DE DATOS - Películas: {len(movies)}, Actores: {len(actors)}")
+        logger.info(f"[/list] Filtro: '{filter_type}'")
         logger.info(f"[/list] Películas en DB: {[m.get('title') for m in movies]}")
         logger.info(f"[/list] Actores en DB: {[a.get('name') for a in actors]}")
 
         if not movies and not actors:
             return "No tienes nada en tu lista... 📋"
 
-        result = "📋 <b>Tu Lista:</b>\n\n"
+        result = "📋 <b>Tu Lista</b>\n\n"
 
-        if movies:
-            result += "<b>Películas y Series:</b>\n"
+        # Mostrar películas si filter_type es "all" o "movies"
+        if filter_type in ["all", "movies"] and movies:
+            result += "<b>🎬 Películas y Series:</b>\n"
             for movie in movies:
-                result += f"  🎬 {movie.get('title', 'Unknown')}\n"
+                title = movie.get('title', 'Unknown')
+                result += f"  • {title}\n"
+                result += f"    <code>/remove \"{title}\"</code>\n"
             result += "\n"
 
-        if actors:
-            result += "<b>Actores Monitoreados:</b>\n"
+        # Mostrar actores si filter_type es "all" o "actors"
+        if filter_type in ["all", "actors"] and actors:
+            result += "<b>👤 Actores Monitoreados:</b>\n"
             for actor in actors:
-                result += f"  👤 {actor.get('name', 'Unknown')}\n"
+                name = actor.get('name', 'Unknown')
+                result += f"  • {name}\n"
+                result += f"    <code>/remove \"{name}\"</code>\n"
+            result += "\n"
+
+        # Mostrar opciones de filtro
+        if filter_type == "all":
+            result += "<b>Filtros:</b>\n"
+            result += "/list movies - solo películas/series\n"
+            result += "/list actors - solo actores"
 
         return result
 
@@ -129,8 +148,10 @@ class CommandHandler:
 <b>/add_actor "Nombre"</b> - Monitorea a un actor
   Ejemplo: /add_actor "Tom Cruise"
 
-<b>/list</b> - Muestra tu lista de películas y actores
-  Ejemplo: /list
+<b>/list</b> - Muestra tu lista completa
+  /list - Todo
+  /list movies - Solo películas/series
+  /list actors - Solo actores
 
 <b>/remove "Título o Nombre"</b> - Remueve un elemento
   Ejemplo: /remove "Dune"
