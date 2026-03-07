@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import requests
 from backend.tmdb_client import TMDbClient
+from backend.http_client import RequestManager
 
 
 class TestTMDbClient(unittest.TestCase):
@@ -9,12 +9,10 @@ class TestTMDbClient(unittest.TestCase):
         self.api_key = "test_api_key_12345"
         self.client = TMDbClient(self.api_key)
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_search_movie(self, mock_get):
         """Test successful movie search"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "results": [
                 {
                     "id": 550,
@@ -23,7 +21,6 @@ class TestTMDbClient(unittest.TestCase):
                 }
             ]
         }
-        mock_get.return_value = mock_response
 
         result = self.client.search_movie("Fight Club")
 
@@ -32,24 +29,19 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(result["title"], "Fight Club")
         mock_get.assert_called_once()
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_search_movie_not_found(self, mock_get):
         """Test movie search when not found"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"results": []}
-        mock_get.return_value = mock_response
+        mock_get.return_value = {"results": []}
 
         result = self.client.search_movie("NonexistentMovieXYZ123")
 
         self.assertIsNone(result)
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_actor_id(self, mock_get):
         """Test getting actor ID"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "results": [
                 {
                     "id": 287,
@@ -57,7 +49,6 @@ class TestTMDbClient(unittest.TestCase):
                 }
             ]
         }
-        mock_get.return_value = mock_response
 
         result = self.client.get_actor_id("Brad Pitt")
 
@@ -65,12 +56,10 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(result, 287)
         mock_get.assert_called_once()
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_actor_filmography(self, mock_get):
         """Test getting actor filmography"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "cast": [
                 {
                     "id": 550,
@@ -84,7 +73,6 @@ class TestTMDbClient(unittest.TestCase):
                 }
             ]
         }
-        mock_get.return_value = mock_response
 
         result = self.client.get_actor_filmography(287)
 
@@ -93,12 +81,10 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(result[0]["title"], "Fight Club")
         mock_get.assert_called_once()
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_search_tv(self, mock_get):
         """Test TV show search"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "results": [
                 {
                     "id": 1399,
@@ -107,7 +93,6 @@ class TestTMDbClient(unittest.TestCase):
                 }
             ]
         }
-        mock_get.return_value = mock_response
 
         result = self.client.search_tv("Breaking Bad")
 
@@ -115,24 +100,19 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(result["id"], 1399)
         self.assertEqual(result["name"], "Breaking Bad")
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_search_tv_not_found(self, mock_get):
         """Test TV show search when not found"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"results": []}
-        mock_get.return_value = mock_response
+        mock_get.return_value = {"results": []}
 
         result = self.client.search_tv("NonexistentShowXYZ123")
 
         self.assertIsNone(result)
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_actor_tv_credits(self, mock_get):
         """Test getting actor TV credits"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "cast": [
                 {
                     "id": 1399,
@@ -141,7 +121,6 @@ class TestTMDbClient(unittest.TestCase):
                 }
             ]
         }
-        mock_get.return_value = mock_response
 
         result = self.client.get_actor_tv_credits(287)
 
@@ -149,12 +128,10 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "Breaking Bad")
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_upcoming_releases(self, mock_get):
         """Test getting upcoming movie releases"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "results": [
                 {
                     "id": 603,
@@ -163,7 +140,6 @@ class TestTMDbClient(unittest.TestCase):
                 }
             ]
         }
-        mock_get.return_value = mock_response
 
         result = self.client.get_upcoming_releases()
 
@@ -171,80 +147,64 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["title"], "The Matrix Reloaded")
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_actor_id_not_found(self, mock_get):
         """Test getting actor ID when not found"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"results": []}
-        mock_get.return_value = mock_response
+        mock_get.return_value = {"results": []}
 
         result = self.client.get_actor_id("UnknownActorXYZ")
 
         self.assertIsNone(result)
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_api_request_error(self, mock_get):
         """Test handling API request errors"""
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = requests.RequestException("Connection error")
-        mock_get.return_value = mock_response
+        mock_get.return_value = None
 
         result = self.client.search_movie("Test Movie")
 
         self.assertIsNone(result)
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_actor_filmography_empty(self, mock_get):
         """Test getting actor filmography when empty"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"cast": []}
-        mock_get.return_value = mock_response
+        mock_get.return_value = {"cast": []}
 
         result = self.client.get_actor_filmography(287)
 
         self.assertEqual(result, [])
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_actor_tv_credits_empty(self, mock_get):
         """Test getting actor TV credits when empty"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"cast": []}
-        mock_get.return_value = mock_response
+        mock_get.return_value = {"cast": []}
 
         result = self.client.get_actor_tv_credits(287)
 
         self.assertEqual(result, [])
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_get_upcoming_releases_empty(self, mock_get):
         """Test getting upcoming releases when empty"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"results": []}
-        mock_get.return_value = mock_response
+        mock_get.return_value = {"results": []}
 
         result = self.client.get_upcoming_releases()
 
         self.assertEqual(result, [])
 
-    @patch('backend.tmdb_client.requests.get')
+    @patch('backend.http_client.RequestManager.get')
     def test_search_movie_uses_secure_headers(self, mock_get):
         """Test que search_movie usa headers seguros, no parámetros"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+        mock_get.return_value = {
             "results": [
                 {"id": 438632, "title": "Dune", "release_date": "2024-02-14"}
             ]
         }
-        mock_get.return_value = mock_response
 
         client = TMDbClient("fake_key")
         result = client.search_movie("Dune")
 
-        # Verificar que se usó request.get
+        # Verificar que se usó RequestManager.get
         assert mock_get.called
 
         # Verificar que headers contiene Authorization
@@ -255,9 +215,6 @@ class TestTMDbClient(unittest.TestCase):
 
         # Verificar que api_key NO está en params
         assert "api_key" not in call_kwargs.get("params", {})
-
-        # Verificar timeout
-        assert call_kwargs.get("timeout") == 5
 
 
 if __name__ == "__main__":

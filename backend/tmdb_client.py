@@ -1,5 +1,5 @@
-import requests
 from typing import Optional, Dict, List
+from backend.http_client import RequestManager
 
 
 class TMDbClient:
@@ -8,31 +8,20 @@ class TMDbClient:
     def __init__(self, api_key: str):
         """Initialize TMDb client with API key"""
         self.api_key = api_key
-        self.session = requests.Session()
+        self.request_manager = RequestManager(timeout=5)
 
     def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Dict]:
         """Make HTTP request to TMDb API with secure headers"""
-        try:
-            if params is None:
-                params = {}
+        if params is None:
+            params = {}
 
-            # NO agregar api_key a params - usar header en su lugar
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
 
-            url = f"{self.BASE_URL}{endpoint}"
-            response = requests.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=5  # Agregar timeout también
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException:
-            return None
+        url = f"{self.BASE_URL}{endpoint}"
+        return self.request_manager.get(url, params=params, headers=headers)
 
     def search_movie(self, title: str) -> Optional[Dict]:
         """Search for a movie by title"""
