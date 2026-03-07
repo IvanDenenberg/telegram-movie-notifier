@@ -92,7 +92,7 @@ Usa /help para ver todos los comandos disponibles."""
                 else:
                     response = "❌ No entiendo ese mensaje. Usa /help para ver los comandos disponibles."
 
-            await update.message.reply_text(response, parse_mode="Markdown")
+            await update.message.reply_text(response)
         except Exception as e:
             sanitized_error = self.security_manager.sanitize(str(e))
             self.logger.error(f"Error procesando mensaje: {sanitized_error}")
@@ -145,8 +145,7 @@ Usa /help para ver todos los comandos disponibles."""
                     try:
                         await context.bot.send_message(
                             chat_id=self.telegram_user_id,
-                            text=message,
-                            parse_mode="Markdown"
+                            text=message
                         )
                     except Exception as e:
                         self.logger.error(f"Error enviando notificación: {e}")
@@ -200,7 +199,7 @@ Usa /help para ver todos los comandos disponibles."""
             }
 
             response = await self._handle_command(parsed)
-            await update.message.reply_text(response, parse_mode="Markdown")
+            await update.message.reply_text(response)
 
         return handler
 
