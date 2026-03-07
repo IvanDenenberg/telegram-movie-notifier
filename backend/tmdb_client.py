@@ -1,0 +1,111 @@
+import requests
+from typing import Optional, Dict, List
+
+
+class TMDbClient:
+    BASE_URL = "https://api.themoviedb.org/3"
+
+    def __init__(self, api_key: str):
+        """Initialize TMDb client with API key"""
+        self.api_key = api_key
+        self.session = requests.Session()
+
+    def _make_request(self, endpoint: str, params: Dict) -> Optional[Dict]:
+        """Make HTTP request to TMDb API"""
+        try:
+            params["api_key"] = self.api_key
+            url = f"{self.BASE_URL}{endpoint}"
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            return None
+
+    def search_movie(self, title: str) -> Optional[Dict]:
+        """Search for a movie by title"""
+        data = self._make_request("/search/movie", {"query": title})
+        if not data or "results" not in data or not data["results"]:
+            return None
+
+        # Filter for valid results (with release_date and title)
+        for result in data["results"]:
+            if result.get("title") and result.get("release_date"):
+                return result
+
+        return None
+
+    def search_tv(self, title: str) -> Optional[Dict]:
+        """Search for a TV show by title"""
+        data = self._make_request("/search/tv", {"query": title})
+        if not data or "results" not in data or not data["results"]:
+            return None
+
+        # Filter for valid results (with first_air_date and name)
+        for result in data["results"]:
+            if result.get("name") and result.get("first_air_date"):
+                return result
+
+        return None
+
+    def get_actor_id(self, actor_name: str) -> Optional[int]:
+        """Get actor ID by name"""
+        data = self._make_request("/search/person", {"query": actor_name})
+        if not data or "results" not in data or not data["results"]:
+            return None
+
+        first_result = data["results"][0]
+        if "id" in first_result:
+            return first_result["id"]
+
+        return None
+
+    def get_actor_filmography(self, actor_id: int) -> List[Dict]:
+        """Get actor's movie filmography"""
+        data = self._make_request(
+            f"/person/{actor_id}/movie_credits",
+            {}
+        )
+        if not data or "cast" not in data:
+            return []
+
+        # Filter for valid results (with title and release_date)
+        filmography = []
+        for movie in data["cast"]:
+            if movie.get("title") and movie.get("release_date"):
+                filmography.append(movie)
+
+        return filmography
+
+    def get_actor_tv_credits(self, actor_id: int) -> List[Dict]:
+        """Get actor's TV show credits"""
+        data = self._make_request(
+            f"/person/{actor_id}/tv_credits",
+            {}
+        )
+        if not data or "cast" not in data:
+            return []
+
+        # Filter for valid results (with name and first_air_date)
+        tv_credits = []
+        for show in data["cast"]:
+            if show.get("name") and show.get("first_air_date"):
+                tv_credits.append(show)
+
+        return tv_credits
+
+    def get_upcoming_releases(self, page: int = 1) -> List[Dict]:
+        """Get upcoming movie releases"""
+        data = self._make_request(
+            "/movie/upcoming",
+            {"page": page}
+        )
+        if not data or "results" not in data:
+            return []
+
+        # Filter for valid results (with title and release_date)
+        releases = []
+        for movie in data["results"]:
+            if movie.get("title") and movie.get("release_date"):
+                releases.append(movie)
+
+        return releases
