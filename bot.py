@@ -48,7 +48,14 @@ class MovieNotifierBot:
         self.storage_path = "data/movies.json"
         self.command_handler = BotCommandHandler(self.tmdb_api_key, self.storage_path)
         self.parser = MessageParser()
-        self.ai_processor = AIProcessor(enabled=False)
+
+        # Cargar Claude API key si está disponible
+        claude_api_key = os.getenv('CLAUDE_API_KEY')
+        self.ai_processor = AIProcessor(enabled=bool(claude_api_key))
+
+        if claude_api_key:
+            self.security_manager.add_sensitive_key(claude_api_key)
+
         self.notifier = Notifier(self.tmdb_api_key, self.storage_path)
 
         # Configurar callback de notificaciones
