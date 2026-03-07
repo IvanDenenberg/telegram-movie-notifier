@@ -230,6 +230,35 @@ class TestTMDbClient(unittest.TestCase):
 
         self.assertEqual(result, [])
 
+    @patch('backend.tmdb_client.requests.get')
+    def test_search_movie_uses_secure_headers(self, mock_get):
+        """Test que search_movie usa headers seguros, no parámetros"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "results": [
+                {"id": 438632, "title": "Dune", "release_date": "2024-02-14"}
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        client = TMDbClient("fake_key")
+        result = client.search_movie("Dune")
+
+        # Verificar que se usó request.get
+        assert mock_get.called
+
+        # Verificar que headers contiene Authorization
+        call_kwargs = mock_get.call_args[1]
+        assert "headers" in call_kwargs
+        assert "Authorization" in call_kwargs["headers"]
+        assert "Bearer fake_key" in call_kwargs["headers"]["Authorization"]
+
+        # Verificar que api_key NO está en params
+        assert "api_key" not in call_kwargs.get("params", {})
+
+        # Verificar timeout
+        assert call_kwargs.get("timeout") == 5
+
 
 if __name__ == "__main__":
     unittest.main()

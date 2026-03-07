@@ -10,12 +10,25 @@ class TMDbClient:
         self.api_key = api_key
         self.session = requests.Session()
 
-    def _make_request(self, endpoint: str, params: Dict) -> Optional[Dict]:
-        """Make HTTP request to TMDb API"""
+    def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Dict]:
+        """Make HTTP request to TMDb API with secure headers"""
         try:
-            params["api_key"] = self.api_key
+            if params is None:
+                params = {}
+
+            # NO agregar api_key a params - usar header en su lugar
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+
             url = f"{self.BASE_URL}{endpoint}"
-            response = requests.get(url, params=params)
+            response = requests.get(
+                url,
+                params=params,
+                headers=headers,
+                timeout=5  # Agregar timeout también
+            )
             response.raise_for_status()
             return response.json()
         except requests.RequestException:
