@@ -22,7 +22,7 @@ class CommandHandler:
         # Try to search for movie first
         movie = self.tmdb.search_movie(title)
         if movie:
-            self.storage.add_movie(movie.get("title", title), movie.get("id"))
+            self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
             movie_id = movie.get("id")
             tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
             return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
@@ -30,7 +30,7 @@ class CommandHandler:
         # Try to search for TV show
         tv = self.tmdb.search_tv(title)
         if tv:
-            self.storage.add_movie(tv.get("name", title), tv.get("id"))
+            self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
             tv_id = tv.get("id")
             tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
             return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
@@ -54,8 +54,12 @@ class CommandHandler:
 
     def handle_list(self, args: List[str] = None) -> str:
         """Handle /list command - show movies, actors, or both"""
-        movies = self.storage.get_movies()
+        all_items = self.storage.get_movies()
         actors = self.storage.get_actors()
+
+        # Separar películas y series
+        movies = [m for m in all_items if m.get("type") == "movie"]
+        tv_shows = [m for m in all_items if m.get("type") == "tv"]
 
         # Determinar qué mostrar
         filter_type = "all"
@@ -63,21 +67,28 @@ class CommandHandler:
             filter_type = args[0].lower()
 
         # DEBUG LOGS
-        logger.info(f"[/list] BASE DE DATOS - Películas: {len(movies)}, Actores: {len(actors)}")
+        logger.info(f"[/list] BASE DE DATOS - Películas: {len(movies)}, Series: {len(tv_shows)}, Actores: {len(actors)}")
         logger.info(f"[/list] Filtro: '{filter_type}'")
-        logger.info(f"[/list] Películas en DB: {[m.get('title') for m in movies]}")
-        logger.info(f"[/list] Actores en DB: {[a.get('name') for a in actors]}")
 
-        if not movies and not actors:
+        if not movies and not tv_shows and not actors:
             return "No tienes nada en tu lista... 📋"
 
         result = "📋 <b>Tu Lista</b>\n\n"
 
         # Mostrar películas si filter_type es "all" o "movies"
         if filter_type in ["all", "movies"] and movies:
-            result += "<b>🎬 Películas y Series:</b>\n"
+            result += "<b>🎬 Películas:</b>\n"
             for movie in movies:
                 title = movie.get('title', 'Unknown')
+                result += f"  • {title}\n"
+                result += f"    <code>/remove \"{title}\"</code>\n"
+            result += "\n"
+
+        # Mostrar series si filter_type es "all" o "series"
+        if filter_type in ["all", "series"] and tv_shows:
+            result += "<b>📺 Series:</b>\n"
+            for show in tv_shows:
+                title = show.get('title', 'Unknown')
                 result += f"  • {title}\n"
                 result += f"    <code>/remove \"{title}\"</code>\n"
             result += "\n"
@@ -94,7 +105,8 @@ class CommandHandler:
         # Mostrar opciones de filtro
         if filter_type == "all":
             result += "<b>Filtros:</b>\n"
-            result += "/list movies - solo películas/series\n"
+            result += "/list movies - solo películas\n"
+            result += "/list series - solo series\n"
             result += "/list actors - solo actores"
 
         return result
@@ -148,9 +160,10 @@ class CommandHandler:
 <b>/add_actor "Nombre"</b> - Monitorea a un actor
   Ejemplo: /add_actor "Tom Cruise"
 
-<b>/list</b> - Muestra tu lista completa
+<b>/list</b> - Muestra tu lista
   /list - Todo
-  /list movies - Solo películas/series
+  /list movies - Solo películas
+  /list series - Solo series
   /list actors - Solo actores
 
 <b>/remove "Título o Nombre"</b> - Remueve un elemento

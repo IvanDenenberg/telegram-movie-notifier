@@ -32,8 +32,8 @@ class Storage:
         with open(self.path, 'w') as f:
             json.dump(data, f, indent=2)
 
-    def add_movie(self, title: str, tmdb_id: int):
-        """Agrega una película"""
+    def add_movie(self, title: str, tmdb_id: int, media_type: str = "movie"):
+        """Agrega una película o serie (media_type: 'movie' o 'tv')"""
         data = self._load_data()
 
         # Evita duplicados
@@ -43,6 +43,7 @@ class Storage:
         movie = {
             "title": title,
             "id": tmdb_id,
+            "type": media_type,  # "movie" o "tv"
             "added_date": datetime.now().isoformat()
         }
         data["movies"].append(movie)
