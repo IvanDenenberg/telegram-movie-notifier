@@ -52,16 +52,16 @@ class CommandHandler:
         if not movies and not actors:
             return "No tienes nada en tu lista... 📋"
 
-        result = "📋 **Tu Lista:**\n\n"
+        result = "📋 <b>Tu Lista:</b>\n\n"
 
         if movies:
-            result += "**Películas y Series:**\n"
+            result += "<b>Películas y Series:</b>\n"
             for movie in movies:
                 result += f"  🎬 {movie.get('title', 'Unknown')}\n"
             result += "\n"
 
         if actors:
-            result += "**Actores Monitoreados:**\n"
+            result += "<b>Actores Monitoreados:</b>\n"
             for actor in actors:
                 result += f"  👤 {actor.get('name', 'Unknown')}\n"
 
@@ -92,21 +92,21 @@ class CommandHandler:
 
     def handle_help(self, args: List[str] = None) -> str:
         """Handle /help command - show available commands"""
-        help_text = """📖 **Comandos Disponibles:**
+        help_text = """📖 <b>Comandos Disponibles:</b>
 
-**/add "Título"** - Agrega una película o serie
-  Ejemplo: `/add "Dune"`
+<b>/add "Título"</b> - Agrega una película o serie
+  Ejemplo: /add "Dune"
 
-**/add_actor "Nombre"** - Monitorea a un actor
-  Ejemplo: `/add_actor "Tom Cruise"`
+<b>/add_actor "Nombre"</b> - Monitorea a un actor
+  Ejemplo: /add_actor "Tom Cruise"
 
-**/list** - Muestra tu lista de películas y actores
-  Ejemplo: `/list`
+<b>/list</b> - Muestra tu lista de películas y actores
+  Ejemplo: /list
 
-**/remove "Título o Nombre"** - Remueve un elemento
-  Ejemplo: `/remove "Dune"`
+<b>/remove "Título o Nombre"</b> - Remueve un elemento
+  Ejemplo: /remove "Dune"
 
-**/help** - Muestra este mensaje de ayuda
-  Ejemplo: `/help`"""
+<b>/help</b> - Muestra este mensaje de ayuda
+  Ejemplo: /help"""
 
         return help_text
