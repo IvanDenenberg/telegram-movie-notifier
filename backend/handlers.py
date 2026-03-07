@@ -1,6 +1,9 @@
 from typing import List, Optional
+import logging
 from backend.storage import Storage
 from backend.tmdb_client import TMDbClient
+
+logger = logging.getLogger(__name__)
 
 
 class CommandHandler:
@@ -54,6 +57,11 @@ class CommandHandler:
         movies = self.storage.get_movies()
         actors = self.storage.get_actors()
 
+        # DEBUG LOGS
+        logger.info(f"[/list] BASE DE DATOS - Películas: {len(movies)}, Actores: {len(actors)}")
+        logger.info(f"[/list] Películas en DB: {[m.get('title') for m in movies]}")
+        logger.info(f"[/list] Actores en DB: {[a.get('name') for a in actors]}")
+
         if not movies and not actors:
             return "No tienes nada en tu lista... 📋"
 
@@ -79,20 +87,36 @@ class CommandHandler:
 
         search_term = args[0].lower()
 
+        # DEBUG LOGS
+        logger.info(f"[/remove] BUSCANDO: '{args[0]}' → normalizado: '{search_term}'")
+
         # Search in movies/shows
         movies = self.storage.get_movies()
+        logger.info(f"[/remove] Películas en DB: {[(m.get('title'), m.get('title', '').lower()) for m in movies]}")
+
         for movie in movies:
-            if movie.get("title", "").lower() == search_term:
+            movie_title_lower = movie.get("title", "").lower()
+            logger.info(f"[/remove] Comparando '{search_term}' == '{movie_title_lower}' ? {search_term == movie_title_lower}")
+
+            if movie_title_lower == search_term:
                 if self.storage.remove_movie(movie.get("id")):
+                    logger.info(f"[/remove] ✅ Película removida: {movie.get('title')}")
                     return f"✅ '{movie.get('title')}' removida de tu lista"
 
         # Search in actors
         actors = self.storage.get_actors()
+        logger.info(f"[/remove] Actores en DB: {[(a.get('name'), a.get('name', '').lower()) for a in actors]}")
+
         for actor in actors:
-            if actor.get("name", "").lower() == search_term:
+            actor_name_lower = actor.get("name", "").lower()
+            logger.info(f"[/remove] Comparando '{search_term}' == '{actor_name_lower}' ? {search_term == actor_name_lower}")
+
+            if actor_name_lower == search_term:
                 if self.storage.remove_actor(actor.get("id")):
+                    logger.info(f"[/remove] ✅ Actor removido: {actor.get('name')}")
                     return f"✅ '{actor.get('name')}' removida de tu lista"
 
+        logger.warning(f"[/remove] ❌ No encontrado: '{args[0]}'")
         return f"❌ No encontré '{args[0]}' en tu lista."
 
     def handle_help(self, args: List[str] = None) -> str:
