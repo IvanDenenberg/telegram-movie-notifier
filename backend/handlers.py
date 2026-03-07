@@ -20,13 +20,17 @@ class CommandHandler:
         movie = self.tmdb.search_movie(title)
         if movie:
             self.storage.add_movie(movie.get("title", title), movie.get("id"))
-            return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬"
+            movie_id = movie.get("id")
+            tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
+            return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
         # Try to search for TV show
         tv = self.tmdb.search_tv(title)
         if tv:
             self.storage.add_movie(tv.get("name", title), tv.get("id"))
-            return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺"
+            tv_id = tv.get("id")
+            tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
+            return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
         return f"❌ No encontré '{title}' en TMDb. Intenta con otro título."
 
@@ -42,7 +46,8 @@ class CommandHandler:
             return f"❌ No encontré al actor '{actor_name}' en TMDb."
 
         self.storage.add_actor(actor_name, actor_id)
-        return f"✅ Monitoreando a {actor_name} 👤"
+        tmdb_link = f"https://www.themoviedb.org/person/{actor_id}"
+        return f"✅ Monitoreando a {actor_name} 👤\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
     def handle_list(self, args: List[str] = None) -> str:
         """Handle /list command - show all movies and actors"""
