@@ -86,6 +86,23 @@ python bot.py
 
 El bot estará activo y listo para recibir comandos.
 
+### Integración IA (Opcional)
+
+Para habilitar Claude AI:
+
+```bash
+pip install anthropic
+```
+
+Luego en `.env`:
+```env
+CLAUDE_API_KEY=your_api_key_here
+```
+
+Cuando esté habilitado, el bot procesará mensajes en lenguaje natural:
+- "Quiero ver películas de Spielberg" → `/add_actor Steven Spielberg`
+- "Películas recientes" → busca recomendaciones
+
 ---
 
 ## Comandos Disponibles 🤖
