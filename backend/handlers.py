@@ -24,8 +24,8 @@ class CommandHandler:
             return cleaned, year
         return search_text.strip(), None
 
-    def handle_add(self, args: List[str]) -> str:
-        """Handle /add command - add movie or TV show"""
+    def handle_add_movie(self, args: List[str]) -> str:
+        """Handle /add_movie command - add movie or TV show"""
         if not args:
             self.logger.warning("[HANDLE_ADD] No arguments provided")
             return "❌ Por favor especifica el título: /add \"Título de película\""
@@ -270,17 +270,21 @@ class CommandHandler:
         """Handle /help command - show available commands"""
         help_text = """📖 <b>Comandos Disponibles:</b>
 
-<b>/add "Título"</b> - Agrega una película o serie
-  Ejemplo: /add "Dune"
+<b>/add_movie "Título"</b> - Agrega una película o serie
+  Ejemplo: /add_movie "Dune"
 
 <b>/add_actor "Nombre"</b> - Monitorea a un actor
   Ejemplo: /add_actor "Tom Cruise"
+
+<b>/add_director "Nombre"</b> - Monitorea a un director
+  Ejemplo: /add_director "Quentin Tarantino"
 
 <b>/list</b> - Muestra tu lista
   /list - Todo
   /list movies - Solo películas
   /list series - Solo series
   /list actors - Solo actores
+  /list directors - Solo directores
 
 <b>/remove "Título o Nombre"</b> - Remueve un elemento
   Ejemplo: /remove "Dune"
@@ -288,9 +292,15 @@ class CommandHandler:
 <b>/help</b> - Muestra este mensaje de ayuda
   Ejemplo: /help
 
-<b>/add_by_id "ID"</b> - Agrega película/serie por ID de TMDb
-  Ejemplo: /add_by_id "438632"
-  Ejemplo: /add_by_id "1396 tv"
+<b>/add_movie_by_id "ID"</b> - Agrega película/serie por ID de TMDb
+  Ejemplo: /add_movie_by_id "438632"
+  Ejemplo: /add_movie_by_id "1396 tv"
+
+<b>/add_actor_by_id "ID"</b> - Agrega actor por ID de TMDb
+  Ejemplo: /add_actor_by_id "287"
+
+<b>/add_director_by_id "ID"</b> - Agrega director por ID de TMDb
+  Ejemplo: /add_director_by_id "3179"
 
 <b>/upcoming</b> - Muestra estrenos en 60 días
   /upcoming - Todo
@@ -344,15 +354,15 @@ class CommandHandler:
 
         return response.rstrip()
 
-    def handle_add_by_id(self, args: List[str]) -> str:
-        """Handle /add_by_id command - add by TMDb ID"""
+    def handle_add_movie_by_id(self, args: List[str]) -> str:
+        """Handle /add_movie_by_id command - add movie/TV by TMDb ID"""
         if not args:
-            return "❌ Por favor especifica un ID de TMDb: /add_by_id 438632"
+            return "❌ Por favor especifica un ID de TMDb: /add_movie_by_id 438632"
 
         try:
             tmdb_id = int(args[0])
         except ValueError:
-            self.logger.warning(f"[HANDLE_ADD_BY_ID] Invalid ID format: {args[0]}")
+            self.logger.warning(f"[HANDLE_ADD_MOVIE_BY_ID] Invalid ID format: {args[0]}")
             return f"❌ ID inválido: {args[0]}. Debe ser un número."
 
         # Determine type: movie or tv
@@ -360,13 +370,13 @@ class CommandHandler:
         if len(args) > 1 and args[1].lower() == "tv":
             media_type = "tv"
 
-        self.logger.debug(f"[HANDLE_ADD_BY_ID] Adding by ID: {tmdb_id}, type: {media_type}")
+        self.logger.debug(f"[HANDLE_ADD_MOVIE_BY_ID] Adding by ID: {tmdb_id}, type: {media_type}")
 
         if media_type == "tv":
             data = self.tmdb.get_tv_by_id(tmdb_id)
             if data:
                 self.storage.add_movie(data.get("name", f"ID {tmdb_id}"), tmdb_id, media_type="tv")
-                self.logger.info(f"[HANDLE_ADD_BY_ID] TV show added by ID: {data.get('name')}")
+                self.logger.info(f"[HANDLE_ADD_MOVIE_BY_ID] TV show added by ID: {data.get('name')}")
                 tmdb_link = f"https://www.themoviedb.org/tv/{tmdb_id}"
                 response = f"✅ '{data.get('name')}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
                 undo_action = f'/remove "{data.get("name")}"'
@@ -375,11 +385,61 @@ class CommandHandler:
             data = self.tmdb.get_movie_by_id(tmdb_id)
             if data:
                 self.storage.add_movie(data.get("title", f"ID {tmdb_id}"), tmdb_id, media_type="movie")
-                self.logger.info(f"[HANDLE_ADD_BY_ID] Movie added by ID: {data.get('title')}")
+                self.logger.info(f"[HANDLE_ADD_MOVIE_BY_ID] Movie added by ID: {data.get('title')}")
                 tmdb_link = f"https://www.themoviedb.org/movie/{tmdb_id}"
                 response = f"✅ '{data.get('title')}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
                 undo_action = f'/remove "{data.get("title")}"'
                 return f"{response}|||UNDO_BUTTON||{undo_action}"
 
-        self.logger.warning(f"[HANDLE_ADD_BY_ID] Item not found: {tmdb_id}")
+        self.logger.warning(f"[HANDLE_ADD_MOVIE_BY_ID] Item not found: {tmdb_id}")
         return f"❌ No encontré un elemento con ID {tmdb_id} en TMDb."
+
+    def handle_add_actor_by_id(self, args: List[str]) -> str:
+        """Handle /add_actor_by_id command - add actor by TMDb ID"""
+        if not args:
+            return "❌ Por favor especifica un ID de TMDb: /add_actor_by_id 287"
+
+        try:
+            actor_id = int(args[0])
+        except ValueError:
+            self.logger.warning(f"[HANDLE_ADD_ACTOR_BY_ID] Invalid ID format: {args[0]}")
+            return f"❌ ID inválido: {args[0]}"
+
+        # Get actor data from TMDb
+        data = self.tmdb._make_request(f"/person/{actor_id}", {})
+        if not data or not data.get("name"):
+            self.logger.warning(f"[HANDLE_ADD_ACTOR_BY_ID] Actor not found: {actor_id}")
+            return f"❌ No encontré un actor con ID {actor_id} en TMDb"
+
+        actor_name = data.get("name")
+        self.storage.add_actor(actor_name, actor_id)
+        self.logger.info(f"[HANDLE_ADD_ACTOR_BY_ID] Actor added by ID: {actor_name}")
+        tmdb_link = f"https://www.themoviedb.org/person/{actor_id}"
+        response = f"✅ Monitoreando a {actor_name} 👤\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+        undo_action = f'/remove "{actor_name}"'
+        return f"{response}|||UNDO_BUTTON||{undo_action}"
+
+    def handle_add_director_by_id(self, args: List[str]) -> str:
+        """Handle /add_director_by_id command - add director by TMDb ID"""
+        if not args:
+            return "❌ Por favor especifica un ID de TMDb: /add_director_by_id 3179"
+
+        try:
+            director_id = int(args[0])
+        except ValueError:
+            self.logger.warning(f"[HANDLE_ADD_DIRECTOR_BY_ID] Invalid ID format: {args[0]}")
+            return f"❌ ID inválido: {args[0]}"
+
+        # Get director data from TMDb
+        data = self.tmdb._make_request(f"/person/{director_id}", {})
+        if not data or not data.get("name"):
+            self.logger.warning(f"[HANDLE_ADD_DIRECTOR_BY_ID] Director not found: {director_id}")
+            return f"❌ No encontré un director con ID {director_id} en TMDb"
+
+        director_name = data.get("name")
+        self.storage.add_director(director_name, director_id)
+        self.logger.info(f"[HANDLE_ADD_DIRECTOR_BY_ID] Director added by ID: {director_name}")
+        tmdb_link = f"https://www.themoviedb.org/person/{director_id}"
+        response = f"✅ Monitoreando a {director_name} 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+        undo_action = f'/remove "{director_name}"'
+        return f"{response}|||UNDO_BUTTON||{undo_action}"

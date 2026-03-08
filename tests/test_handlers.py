@@ -12,7 +12,7 @@ class TestCommandHandler(unittest.TestCase):
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
     def test_handle_add_movie(self, mock_tmdb_class, mock_storage_class):
-        """Test adding a movie with /add command"""
+        """Test adding a movie with /add_movie command"""
         # Setup mocks
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -27,7 +27,7 @@ class TestCommandHandler(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add(["Dune"])
+        result = handler.handle_add_movie(["Dune"])
 
         # Verify
         self.assertIn("Dune", result)
@@ -49,7 +49,7 @@ class TestCommandHandler(unittest.TestCase):
         mock_tmdb.get_search_results.return_value = []
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add(["NonexistentMovieXYZ"])
+        result = handler.handle_add_movie(["NonexistentMovieXYZ"])
 
         # Verify
         self.assertIn("❌", result)
@@ -309,8 +309,8 @@ class TestCommandHandler(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_handle_add_logs_operation(self, mock_tmdb_class, mock_storage_class):
-        """Test that /add command logs debug information"""
+    def test_handle_add_movie_logs_operation(self, mock_tmdb_class, mock_storage_class):
+        """Test that /add_movie command logs debug information"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
         mock_storage = MagicMock()
@@ -322,7 +322,7 @@ class TestCommandHandler(unittest.TestCase):
 
         # Capture logs
         with self.assertLogs('backend.handlers', level=logging.DEBUG) as cm:
-            result = handler.handle_add(["Dune"])
+            result = handler.handle_add_movie(["Dune"])
 
         # Verify logging occurred
         log_text = '\n'.join(cm.output).lower()
@@ -428,6 +428,174 @@ class TestCommandHandler(unittest.TestCase):
         self.assertIn("removida", result)
         self.assertIn("Quentin Tarantino", result)
         mock_storage.remove_director.assert_called_once()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_actor_by_id(self, mock_tmdb_class, mock_storage_class):
+        """Test adding an actor by ID with /add_actor_by_id command"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock API response for actor
+        mock_tmdb._make_request.return_value = {
+            "id": 287,
+            "name": "Brad Pitt"
+        }
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_actor_by_id(["287"])
+
+        # Verify
+        self.assertIn("Brad Pitt", result)
+        self.assertIn("✅", result)
+        self.assertIn("Monitoreando", result)
+        mock_storage.add_actor.assert_called_once_with("Brad Pitt", 287)
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_actor_by_id_not_found(self, mock_tmdb_class, mock_storage_class):
+        """Test adding actor by ID when not found"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock API response with no data
+        mock_tmdb._make_request.return_value = None
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_actor_by_id(["99999"])
+
+        # Verify
+        self.assertIn("❌", result)
+        self.assertIn("No encontré", result)
+        mock_storage.add_actor.assert_not_called()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_actor_by_id_invalid_id(self, mock_tmdb_class, mock_storage_class):
+        """Test adding actor by ID with invalid ID format"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_actor_by_id(["abc"])
+
+        # Verify
+        self.assertIn("❌", result)
+        self.assertIn("ID inválido", result)
+        mock_storage.add_actor.assert_not_called()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_director_by_id(self, mock_tmdb_class, mock_storage_class):
+        """Test adding a director by ID with /add_director_by_id command"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock API response for director
+        mock_tmdb._make_request.return_value = {
+            "id": 3179,
+            "name": "Quentin Tarantino"
+        }
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_director_by_id(["3179"])
+
+        # Verify
+        self.assertIn("Quentin Tarantino", result)
+        self.assertIn("✅", result)
+        self.assertIn("Monitoreando", result)
+        mock_storage.add_director.assert_called_once_with("Quentin Tarantino", 3179)
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_director_by_id_not_found(self, mock_tmdb_class, mock_storage_class):
+        """Test adding director by ID when not found"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock API response with no data
+        mock_tmdb._make_request.return_value = None
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_director_by_id(["99999"])
+
+        # Verify
+        self.assertIn("❌", result)
+        self.assertIn("No encontré", result)
+        mock_storage.add_director.assert_not_called()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_director_by_id_invalid_id(self, mock_tmdb_class, mock_storage_class):
+        """Test adding director by ID with invalid ID format"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_director_by_id(["xyz"])
+
+        # Verify
+        self.assertIn("❌", result)
+        self.assertIn("ID inválido", result)
+        mock_storage.add_director.assert_not_called()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_movie_by_id(self, mock_tmdb_class, mock_storage_class):
+        """Test adding a movie by ID with /add_movie_by_id command"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock movie data
+        mock_tmdb.get_movie_by_id.return_value = {
+            "id": 438632,
+            "title": "Dune: Part Two"
+        }
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_movie_by_id(["438632"])
+
+        # Verify
+        self.assertIn("Dune: Part Two", result)
+        self.assertIn("✅", result)
+        mock_storage.add_movie.assert_called_once_with("Dune: Part Two", 438632, media_type="movie")
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_movie_by_id_tv(self, mock_tmdb_class, mock_storage_class):
+        """Test adding a TV show by ID with /add_movie_by_id command"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock TV show data
+        mock_tmdb.get_tv_by_id.return_value = {
+            "id": 1399,
+            "name": "Breaking Bad"
+        }
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_movie_by_id(["1399", "tv"])
+
+        # Verify
+        self.assertIn("Breaking Bad", result)
+        self.assertIn("✅", result)
+        mock_storage.add_movie.assert_called_once_with("Breaking Bad", 1399, media_type="tv")
 
 
 if __name__ == "__main__":

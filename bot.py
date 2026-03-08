@@ -143,8 +143,8 @@ Usa /help para ver todos los comandos disponibles."""
         try:
             if command == "start":
                 return "Bot iniciado. Usa /help para ver los comandos."
-            elif command == "add":
-                return self.command_handler.handle_add(args)
+            elif command == "add_movie":
+                return self.command_handler.handle_add_movie(args)
             elif command == "add_actor":
                 return self.command_handler.handle_add_actor(args)
             elif command == "add_director":
@@ -157,8 +157,12 @@ Usa /help para ver todos los comandos disponibles."""
                 return self.command_handler.handle_help()
             elif command == "upcoming":
                 return self.command_handler.handle_upcoming(args)
-            elif command == "add_by_id":
-                return self.command_handler.handle_add_by_id(args)
+            elif command == "add_movie_by_id":
+                return self.command_handler.handle_add_movie_by_id(args)
+            elif command == "add_actor_by_id":
+                return self.command_handler.handle_add_actor_by_id(args)
+            elif command == "add_director_by_id":
+                return self.command_handler.handle_add_director_by_id(args)
             elif command == "test_notification":
                 await self.check_releases_job()
                 return "✅ Verificación de estrenos ejecutada (simulando domingo 12 PM)"
@@ -222,10 +226,12 @@ Usa /help para ver todos los comandos disponibles."""
         self.app.add_handler(CommandHandler("start", self.start))
 
         # Handlers para comandos de control
-        self.app.add_handler(CommandHandler("add", self._command_wrapper("add")))
+        self.app.add_handler(CommandHandler("add_movie", self._command_wrapper("add_movie")))
         self.app.add_handler(CommandHandler("add_actor", self._command_wrapper("add_actor")))
         self.app.add_handler(CommandHandler("add_director", self._command_wrapper("add_director")))
-        self.app.add_handler(CommandHandler("add_by_id", self._command_wrapper("add_by_id")))
+        self.app.add_handler(CommandHandler("add_movie_by_id", self._command_wrapper("add_movie_by_id")))
+        self.app.add_handler(CommandHandler("add_actor_by_id", self._command_wrapper("add_actor_by_id")))
+        self.app.add_handler(CommandHandler("add_director_by_id", self._command_wrapper("add_director_by_id")))
         self.app.add_handler(CommandHandler("list", self._command_wrapper("list")))
         self.app.add_handler(CommandHandler("remove", self._command_wrapper("remove")))
         self.app.add_handler(CommandHandler("help", self._command_wrapper("help")))
