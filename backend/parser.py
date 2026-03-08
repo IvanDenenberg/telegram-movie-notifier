@@ -44,11 +44,11 @@ class MessageParser:
         """
         Extract arguments from quoted strings in the command.
 
-        Handles: "text", 'text', "text" (curly), 'text' (curly), and variants.
+        Handles: "text" and 'text'
         """
         cleaned = []
 
-        # Try double quotes first
+        # Try double quotes
         double_pattern = r'"([^"]*)"'
         double_matches = re.findall(double_pattern, message)
         cleaned.extend([m.strip() for m in double_matches if m.strip()])
@@ -57,16 +57,6 @@ class MessageParser:
         single_pattern = r"'([^']*)'"
         single_matches = re.findall(single_pattern, message)
         cleaned.extend([m.strip() for m in single_matches if m.strip()])
-
-        # Try curly double quotes (Unicode U+201C and U+201D)
-        curly_double_pattern = r'[""]([^""]*)[""']
-        curly_double_matches = re.findall(curly_double_pattern, message)
-        cleaned.extend([m.strip() for m in curly_double_matches if m.strip()])
-
-        # Try curly single quotes (Unicode U+2018 and U+2019)
-        curly_single_pattern = r"[''']([^''']*)[''']"
-        curly_single_matches = re.findall(curly_single_pattern, message)
-        cleaned.extend([m.strip() for m in curly_single_matches if m.strip()])
 
         # Remove duplicates while preserving order
         seen = set()
