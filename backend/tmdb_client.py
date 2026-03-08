@@ -397,6 +397,25 @@ class TMDbClient:
         self.logger.debug(f"[GET_DIRECTOR_ID] No valid results for: {director_name}")
         return None
 
+    def get_director_filmography(self, director_id: int) -> List[Dict]:
+        """Get director's movie filmography - only where job='Director'"""
+        data = self._make_request(
+            f"/person/{director_id}/movie_credits",
+            {}
+        )
+        if not data:
+            return []
+
+        # Filter for Director role in crew
+        filmography = []
+
+        if "crew" in data:
+            for movie in data["crew"]:
+                if movie.get("job") == "Director" and movie.get("title") and movie.get("release_date"):
+                    filmography.append(movie)
+
+        return filmography
+
     def get_actor_filmography(self, actor_id: int) -> List[Dict]:
         """Get actor's movie filmography"""
         data = self._make_request(

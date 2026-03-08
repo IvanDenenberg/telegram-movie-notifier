@@ -1,5 +1,6 @@
 from typing import List, Optional
 import logging
+import re
 from backend.storage import Storage
 from backend.tmdb_client import TMDbClient
 from backend.notifier import Notifier
@@ -14,6 +15,15 @@ class CommandHandler:
         self.tmdb = TMDbClient(tmdb_api_key)
         self.storage = Storage(storage_path)
 
+    def _extract_year_from_search(self, search_text: str) -> tuple:
+        """Extract year from search text. Returns (cleaned_text, year) where year is YYYY format or None"""
+        year_match = re.search(r'\b([12]\d{3})\b', search_text)
+        if year_match:
+            year = year_match.group(1)
+            cleaned = re.sub(r'\b' + year + r'\b', '', search_text).strip()
+            return cleaned, year
+        return search_text.strip(), None
+
     def handle_add(self, args: List[str]) -> str:
         """Handle /add command - add movie or TV show"""
         if not args:
@@ -23,9 +33,12 @@ class CommandHandler:
         title = args[0]
         self.logger.debug(f"[HANDLE_ADD] Searching for title: {title}")
 
+        # Extract year if present - use clean title for close_match comparison
+        title_for_comparison, _ = self._extract_year_from_search(title)
+
         # Try to search for movie first
         movie = self.tmdb.search_movie(title)
-        if movie and self._is_close_match(title, movie.get("title", "")):
+        if movie and self._is_close_match(title_for_comparison, movie.get("title", "")):
             self.logger.debug(f"[HANDLE_ADD] Close match verified: {movie.get('title')} (ID: {movie.get('id')})")
             self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
             self.logger.info(f"[HANDLE_ADD] Movie added: {movie.get('title')} (ID: {movie.get('id')})")
@@ -48,7 +61,7 @@ class CommandHandler:
 
         # Try to search for TV show
         tv = self.tmdb.search_tv(title)
-        if tv and self._is_close_match(title, tv.get("name", "")):
+        if tv and self._is_close_match(title_for_comparison, tv.get("name", "")):
             self.logger.debug(f"[HANDLE_ADD] Close match verified (TV): {tv.get('name')} (ID: {tv.get('id')})")
             self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
             self.logger.info(f"[HANDLE_ADD] TV show added: {tv.get('name')} (ID: {tv.get('id')})")
