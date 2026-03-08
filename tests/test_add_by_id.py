@@ -3,14 +3,14 @@ from unittest.mock import patch, MagicMock
 from backend.handlers import CommandHandler
 
 
-class TestAddById(unittest.TestCase):
+class TestAddMovieById(unittest.TestCase):
     def setUp(self):
         self.api_key = "test_api_key_12345"
         self.storage_path = "test_data/test_movies.json"
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_add_by_id_movie(self, mock_tmdb_class, mock_storage_class):
+    def test_add_movie_by_id_movie(self, mock_tmdb_class, mock_storage_class):
         """Test adding a movie by TMDb ID"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -24,7 +24,7 @@ class TestAddById(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add_by_id(["438632"])
+        result = handler.handle_add_movie_by_id(["438632"])
 
         self.assertIn("✅", result)
         self.assertIn("Dune", result)
@@ -32,7 +32,7 @@ class TestAddById(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_add_by_id_tv(self, mock_tmdb_class, mock_storage_class):
+    def test_add_movie_by_id_tv(self, mock_tmdb_class, mock_storage_class):
         """Test adding a TV show by TMDb ID"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -46,7 +46,7 @@ class TestAddById(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add_by_id(["1396", "tv"])
+        result = handler.handle_add_movie_by_id(["1396", "tv"])
 
         self.assertIn("✅", result)
         self.assertIn("Breaking Bad", result)
@@ -54,7 +54,7 @@ class TestAddById(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_add_by_id_invalid_format(self, mock_tmdb_class, mock_storage_class):
+    def test_add_movie_by_id_invalid_format(self, mock_tmdb_class, mock_storage_class):
         """Test adding by ID with no arguments"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -62,13 +62,13 @@ class TestAddById(unittest.TestCase):
         mock_storage_class.return_value = mock_storage
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add_by_id([])
+        result = handler.handle_add_movie_by_id([])
 
         self.assertIn("❌", result)
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_add_by_id_not_found(self, mock_tmdb_class, mock_storage_class):
+    def test_add_movie_by_id_not_found(self, mock_tmdb_class, mock_storage_class):
         """Test adding by ID when item not found"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -78,7 +78,7 @@ class TestAddById(unittest.TestCase):
         mock_tmdb.get_movie_by_id.return_value = None
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add_by_id(["999999"])
+        result = handler.handle_add_movie_by_id(["999999"])
 
         self.assertIn("❌", result)
 

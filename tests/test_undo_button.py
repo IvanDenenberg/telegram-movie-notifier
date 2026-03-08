@@ -11,8 +11,8 @@ class TestUndoButton(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_handle_add_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
-        """Test that /add command returns undo metadata"""
+    def test_handle_add_movie_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
+        """Test that /add_movie command returns undo metadata"""
         # Setup mocks
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -27,7 +27,7 @@ class TestUndoButton(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add(["Dune"])
+        result = handler.handle_add_movie(["Dune"])
 
         # Result should contain success marker and undo metadata
         self.assertIn("✅", result)
@@ -37,8 +37,8 @@ class TestUndoButton(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_handle_add_tv_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
-        """Test that /add command returns undo metadata for TV shows"""
+    def test_handle_add_movie_tv_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
+        """Test that /add_movie command returns undo metadata for TV shows"""
         # Setup mocks
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
@@ -55,7 +55,7 @@ class TestUndoButton(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add(["Breaking Bad"])
+        result = handler.handle_add_movie(["Breaking Bad"])
 
         # Result should contain success marker and undo metadata
         self.assertIn("✅", result)
@@ -86,8 +86,8 @@ class TestUndoButton(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_handle_add_by_id_movie_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
-        """Test that /add_by_id command returns undo metadata for movies"""
+    def test_handle_add_movie_by_id_movie_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
+        """Test that /add_movie_by_id command returns undo metadata for movies"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
         mock_storage = MagicMock()
@@ -101,7 +101,7 @@ class TestUndoButton(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add_by_id(["438632"])
+        result = handler.handle_add_movie_by_id(["438632"])
 
         # Result should contain success marker and undo metadata
         self.assertIn("✅", result)
@@ -111,8 +111,8 @@ class TestUndoButton(unittest.TestCase):
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
-    def test_handle_add_by_id_tv_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
-        """Test that /add_by_id command returns undo metadata for TV shows"""
+    def test_handle_add_movie_by_id_tv_returns_undo_metadata(self, mock_tmdb_class, mock_storage_class):
+        """Test that /add_movie_by_id command returns undo metadata for TV shows"""
         mock_tmdb = MagicMock()
         mock_tmdb_class.return_value = mock_tmdb
         mock_storage = MagicMock()
@@ -126,7 +126,7 @@ class TestUndoButton(unittest.TestCase):
         }
 
         handler = CommandHandler(self.api_key, self.storage_path)
-        result = handler.handle_add_by_id(["1234", "tv"])
+        result = handler.handle_add_movie_by_id(["1234", "tv"])
 
         # Result should contain success marker and undo metadata
         self.assertIn("✅", result)

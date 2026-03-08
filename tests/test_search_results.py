@@ -31,7 +31,7 @@ def test_exact_match_still_auto_adds(mock_tmdb_class, mock_storage_class):
     }
 
     handler = CommandHandler("test_key", "data/test.json")
-    result = handler.handle_add(["Dune"])
+    result = handler.handle_add_movie(["Dune"])
 
     assert "✅" in result
     mock_storage.add_movie.assert_called_once()
