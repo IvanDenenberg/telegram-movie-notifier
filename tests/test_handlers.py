@@ -1,4 +1,5 @@
 import unittest
+import logging
 from unittest.mock import patch, MagicMock
 from backend.handlers import CommandHandler
 
@@ -303,6 +304,30 @@ class TestCommandHandler(unittest.TestCase):
         response = handler.handle_upcoming(["movies"])
 
         assert "Movie1" in response or "película" in response.lower()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_logs_operation(self, mock_tmdb_class, mock_storage_class):
+        """Test that /add command logs debug information"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        mock_tmdb.search_movie.return_value = {"title": "Dune", "id": 438632, "release_date": "2021-10-01"}
+
+        handler = CommandHandler("test_key", "data/test.json")
+
+        # Capture logs
+        with self.assertLogs('backend.handlers', level=logging.DEBUG) as cm:
+            result = handler.handle_add(["Dune"])
+
+        # Verify logging occurred
+        log_text = '\n'.join(cm.output).lower()
+        self.assertTrue(
+            "dune" in log_text or "438632" in log_text,
+            f"Expected log output to contain 'dune' or '438632', but got: {cm.output}"
+        )
 
 
 if __name__ == "__main__":

@@ -17,30 +17,41 @@ class CommandHandler:
     def handle_add(self, args: List[str]) -> str:
         """Handle /add command - add movie or TV show"""
         if not args:
+            self.logger.warning("[HANDLE_ADD] No arguments provided")
             return "❌ Por favor especifica el título: /add \"Título de película\""
 
         title = args[0]
+        self.logger.debug(f"[HANDLE_ADD] Searching for title: {title}")
 
         # Try to search for movie first
         movie = self.tmdb.search_movie(title)
         if movie:
             # Verify it's a close match (avoid "Vladimir" → "Vladimir and Rosa")
             if self._is_close_match(title, movie.get("title", "")):
+                self.logger.debug(f"[HANDLE_ADD] Close match verified: {movie.get('title')} (ID: {movie.get('id')})")
                 self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
+                self.logger.info(f"[HANDLE_ADD] Movie added: {movie.get('title')} (ID: {movie.get('id')})")
                 movie_id = movie.get("id")
                 tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
                 return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            else:
+                self.logger.debug(f"[HANDLE_ADD] Movie result rejected - not close enough match: {movie.get('title')}")
 
         # Try to search for TV show
         tv = self.tmdb.search_tv(title)
         if tv:
             # Verify it's a close match
             if self._is_close_match(title, tv.get("name", "")):
+                self.logger.debug(f"[HANDLE_ADD] Close match verified (TV): {tv.get('name')} (ID: {tv.get('id')})")
                 self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
+                self.logger.info(f"[HANDLE_ADD] TV show added: {tv.get('name')} (ID: {tv.get('id')})")
                 tv_id = tv.get("id")
                 tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
                 return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            else:
+                self.logger.debug(f"[HANDLE_ADD] TV result rejected - not close enough match: {tv.get('name')}")
 
+        self.logger.warning(f"[HANDLE_ADD] No suitable result found for: {title}")
         return f"❌ No encontré un resultado exacto para '{title}'.\n\nIntenta:\n• Con el título completo\n• Con año: '{title} 2024'\n• En inglés si es aplicable"
 
     def _is_close_match(self, search_term: str, result_title: str) -> bool:
@@ -68,15 +79,20 @@ class CommandHandler:
     def handle_add_actor(self, args: List[str]) -> str:
         """Handle /add_actor command - monitor actor's projects"""
         if not args:
+            self.logger.warning("[HANDLE_ADD_ACTOR] No arguments provided")
             return "❌ Por favor especifica el nombre del actor: /add_actor \"Nombre\""
 
         actor_name = args[0]
+        self.logger.debug(f"[HANDLE_ADD_ACTOR] Searching for actor: {actor_name}")
+
         actor_id = self.tmdb.get_actor_id(actor_name)
 
         if not actor_id:
+            self.logger.warning(f"[HANDLE_ADD_ACTOR] Actor not found: {actor_name}")
             return f"❌ No encontré al actor '{actor_name}' en TMDb."
 
         self.storage.add_actor(actor_name, actor_id)
+        self.logger.info(f"[HANDLE_ADD_ACTOR] Actor added: {actor_name} (ID: {actor_id})")
         tmdb_link = f"https://www.themoviedb.org/person/{actor_id}"
         return f"✅ Monitoreando a {actor_name} 👤\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
@@ -142,42 +158,36 @@ class CommandHandler:
     def handle_remove(self, args: List[str]) -> str:
         """Handle /remove command - remove movie, show, or actor"""
         if not args:
+            self.logger.warning("[HANDLE_REMOVE] No arguments provided")
             return "❌ Por favor especifica qué remover: /remove \"Título o nombre\""
 
         # Clean search term: remove any quotes that might be included
         search_input = args[0].strip().strip('"\'""\'')  # Remove all types of quotes
         search_term = search_input.lower()
 
-        # DEBUG LOGS
-        logger.info(f"[/remove] BUSCANDO: '{args[0]}' → normalizado: '{search_term}'")
+        self.logger.debug(f"[HANDLE_REMOVE] Searching for: original='{args[0]}', normalized='{search_term}'")
 
         # Search in movies/shows
         movies = self.storage.get_movies()
-        logger.info(f"[/remove] Películas en DB: {[(m.get('title'), m.get('title', '').lower()) for m in movies]}")
 
         for movie in movies:
             movie_title_lower = movie.get("title", "").lower()
-            logger.info(f"[/remove] Comparando '{search_term}' == '{movie_title_lower}' ? {search_term == movie_title_lower}")
-
             if movie_title_lower == search_term:
                 if self.storage.remove_movie(movie.get("id")):
-                    logger.info(f"[/remove] ✅ Película removida: {movie.get('title')}")
+                    self.logger.info(f"[HANDLE_REMOVE] Item removed: {movie.get('title')} (ID: {movie.get('id')})")
                     return f"✅ '{movie.get('title')}' removida de tu lista"
 
         # Search in actors
         actors = self.storage.get_actors()
-        logger.info(f"[/remove] Actores en DB: {[(a.get('name'), a.get('name', '').lower()) for a in actors]}")
 
         for actor in actors:
             actor_name_lower = actor.get("name", "").lower()
-            logger.info(f"[/remove] Comparando '{search_term}' == '{actor_name_lower}' ? {search_term == actor_name_lower}")
-
             if actor_name_lower == search_term:
                 if self.storage.remove_actor(actor.get("id")):
-                    logger.info(f"[/remove] ✅ Actor removido: {actor.get('name')}")
+                    self.logger.info(f"[HANDLE_REMOVE] Actor removed: {actor.get('name')} (ID: {actor.get('id')})")
                     return f"✅ '{actor.get('name')}' removida de tu lista"
 
-        logger.warning(f"[/remove] ❌ No encontrado: '{args[0]}'")
+        self.logger.warning(f"[HANDLE_REMOVE] Item not found: '{args[0]}'")
         return f"❌ No encontré '{args[0]}' en tu lista."
 
     def handle_help(self, args: List[str] = None) -> str:
