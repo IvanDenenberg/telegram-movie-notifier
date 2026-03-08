@@ -23,20 +23,46 @@ class CommandHandler:
         # Try to search for movie first
         movie = self.tmdb.search_movie(title)
         if movie:
-            self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
-            movie_id = movie.get("id")
-            tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
-            return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            # Verify it's a close match (avoid "Vladimir" → "Vladimir and Rosa")
+            if self._is_close_match(title, movie.get("title", "")):
+                self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
+                movie_id = movie.get("id")
+                tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
+                return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
         # Try to search for TV show
         tv = self.tmdb.search_tv(title)
         if tv:
-            self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
-            tv_id = tv.get("id")
-            tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
-            return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            # Verify it's a close match
+            if self._is_close_match(title, tv.get("name", "")):
+                self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
+                tv_id = tv.get("id")
+                tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
+                return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
 
-        return f"❌ No encontré '{title}' en TMDb. Intenta con otro título."
+        return f"❌ No encontré un resultado exacto para '{title}'.\n\nIntenta:\n• Con el título completo\n• Con año: '{title} 2024'\n• En inglés si es aplicable"
+
+    def _is_close_match(self, search_term: str, result_title: str) -> bool:
+        """Check if result title is close enough to search term"""
+        search_lower = search_term.lower().strip()
+        result_lower = result_title.lower().strip()
+
+        # Exact match
+        if search_lower == result_lower:
+            return True
+
+        # Result starts with search term
+        if result_lower.startswith(search_lower):
+            return True
+
+        # Search term in result (but not too loose - require significant match)
+        if search_lower in result_lower:
+            # Check that it's not just a substring (e.g., "Vladimir" in "Vladimir and Rosa")
+            # Only accept if search term is at least 50% of the result length
+            if len(search_lower) >= len(result_lower) * 0.5:
+                return True
+
+        return False
 
     def handle_add_actor(self, args: List[str]) -> str:
         """Handle /add_actor command - monitor actor's projects"""

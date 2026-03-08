@@ -84,14 +84,36 @@ class TMDbClient:
         return None
 
     def get_actor_id(self, actor_name: str) -> Optional[int]:
-        """Get actor ID by name"""
+        """Get actor ID by name - prefers exact matches"""
         data = self._make_request("/search/person", {"query": actor_name})
         if not data or "results" not in data or not data["results"]:
             return None
 
-        first_result = data["results"][0]
-        if "id" in first_result:
-            return first_result["id"]
+        # Normalize search name for comparison
+        search_name_lower = actor_name.lower().strip()
+
+        # First pass: look for exact name match
+        for result in data["results"]:
+            if result.get("name"):
+                result_name_lower = result["name"].lower().strip()
+                if result_name_lower == search_name_lower:
+                    return result.get("id")
+
+        # Second pass: look for names starting with search term
+        for result in data["results"]:
+            if result.get("name"):
+                result_name_lower = result["name"].lower().strip()
+                if result_name_lower.startswith(search_name_lower):
+                    return result.get("id")
+
+        # Fall back to first result (with popularity check - must have known_for_department)
+        for result in data["results"]:
+            if result.get("id") and result.get("known_for_department"):
+                return result.get("id")
+
+        # Last resort: first result with ID
+        if data["results"] and data["results"][0].get("id"):
+            return data["results"][0]["id"]
 
         return None
 
