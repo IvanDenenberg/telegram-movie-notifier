@@ -1,4 +1,5 @@
 from typing import List, Dict, Callable, Optional
+from datetime import datetime, timedelta
 from backend.storage import Storage
 from backend.tmdb_client import TMDbClient
 
@@ -119,3 +120,75 @@ class Notifier:
 
             if self.callback:
                 self.callback(message)
+
+    def get_releases_in_range(self, days: int = 60, filter_type: str = "all") -> Dict[str, List]:
+        """
+        Get releases for movies/actors within N days, grouped by type.
+
+        Args:
+            days: Number of days to look ahead (default 60)
+            filter_type: "all", "movies", "series", or "actors"
+
+        Returns:
+            Dict with keys: "movies", "series", "actors", each containing list of releases
+        """
+        result = {"movies": [], "series": [], "actors": []}
+
+        today = datetime.now().date()
+        end_date = today + timedelta(days=days)
+
+        # Process movies
+        if filter_type in ["all", "movies"]:
+            for movie in self.storage.get_movies():
+                movie_data = self.tmdb_client.search_movie(movie["title"])
+                if movie_data and movie_data.get("release_date"):
+                    release_date = datetime.strptime(
+                        movie_data["release_date"], "%Y-%m-%d"
+                    ).date()
+                    if today <= release_date <= end_date:
+                        result["movies"].append({
+                            "title": movie_data.get("title", movie["title"]),
+                            "release_date": movie_data["release_date"],
+                            "type": "movie"
+                        })
+
+        # Process actors
+        if filter_type in ["all", "movies", "series", "actors"]:
+            for actor in self.storage.get_actors():
+                # Get filmography (movies)
+                if filter_type in ["all", "movies", "actors"]:
+                    filmography = self.tmdb_client.get_actor_filmography(actor["id"])
+                    for movie in filmography:
+                        if movie.get("release_date"):
+                            release_date = datetime.strptime(
+                                movie["release_date"], "%Y-%m-%d"
+                            ).date()
+                            if today <= release_date <= end_date:
+                                result["movies"].append({
+                                    "title": movie.get("title", "Unknown"),
+                                    "release_date": movie["release_date"],
+                                    "type": "movie",
+                                    "actor": actor["name"]
+                                })
+
+                # Get TV credits (series)
+                if filter_type in ["all", "series", "actors"]:
+                    tv_credits = self.tmdb_client.get_actor_tv_credits(actor["id"])
+                    for show in tv_credits:
+                        if show.get("first_air_date"):
+                            release_date = datetime.strptime(
+                                show["first_air_date"], "%Y-%m-%d"
+                            ).date()
+                            if today <= release_date <= end_date:
+                                result["series"].append({
+                                    "title": show.get("name", "Unknown"),
+                                    "release_date": show["first_air_date"],
+                                    "type": "tv",
+                                    "actor": actor["name"]
+                                })
+
+        # Sort each list by release_date
+        for key in result:
+            result[key].sort(key=lambda x: x["release_date"])
+
+        return result
