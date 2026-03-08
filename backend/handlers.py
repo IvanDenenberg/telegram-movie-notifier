@@ -230,7 +230,19 @@ class CommandHandler:
   Ejemplo: /remove "Dune"
 
 <b>/help</b> - Muestra este mensaje de ayuda
-  Ejemplo: /help"""
+  Ejemplo: /help
+
+<b>/add_by_id "ID"</b> - Agrega película/serie por ID de TMDb
+  Ejemplo: /add_by_id "438632"
+  Ejemplo: /add_by_id "1396 tv"
+
+<b>/upcoming</b> - Muestra estrenos en 60 días
+  /upcoming - Todo
+  /upcoming movies - Solo películas
+  /upcoming series - Solo series
+  /upcoming actors - Solo actores
+
+<b>/test_notification</b> - Simula notificación de domingo 12 PM (prueba)"""
 
         return help_text
 

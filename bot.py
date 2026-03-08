@@ -157,6 +157,9 @@ Usa /help para ver todos los comandos disponibles."""
                 return self.command_handler.handle_upcoming(args)
             elif command == "add_by_id":
                 return self.command_handler.handle_add_by_id(args)
+            elif command == "test_notification":
+                await self.check_releases_job()
+                return "✅ Verificación de estrenos ejecutada (simulando domingo 12 PM)"
             else:
                 return f"❌ Comando desconocido: /{command}. Usa /help para ver los comandos disponibles."
         except Exception as e:
