@@ -44,7 +44,7 @@ htmlcov/
 .env*.local
 
 # Data
-data/movies.json
+data/
 
 # OS
 .DS_Store
