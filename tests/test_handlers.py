@@ -31,7 +31,7 @@ class TestCommandHandler(unittest.TestCase):
         # Verify
         self.assertIn("Dune", result)
         self.assertIn("✅", result)
-        mock_storage.add_movie.assert_called_once_with("Dune", 438631)
+        mock_storage.add_movie.assert_called_once_with("Dune", 438631, media_type="movie")
 
     @patch('backend.handlers.Storage')
     @patch('backend.handlers.TMDbClient')
@@ -106,7 +106,7 @@ class TestCommandHandler(unittest.TestCase):
 
         # Mock data
         mock_storage.get_movies.return_value = [
-            {"title": "Dune", "id": 438631}
+            {"title": "Dune", "id": 438631, "type": "movie"}
         ]
         mock_storage.get_actors.return_value = [
             {"name": "Tom Cruise", "id": 500}
@@ -202,6 +202,107 @@ class TestCommandHandler(unittest.TestCase):
         self.assertIn("/list", result)
         self.assertIn("/remove", result)
         self.assertIn("/help", result)
+
+    @patch('backend.handlers.Notifier')
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_upcoming_all(self, mock_tmdb, mock_storage, mock_notifier):
+        """Test /upcoming sin filtro muestra todo"""
+        from datetime import datetime, timedelta
+
+        mock_storage_instance = MagicMock()
+        mock_storage.return_value = mock_storage_instance
+        mock_storage_instance.get_movies.return_value = [
+            {"id": 1, "title": "Movie1"}
+        ]
+        mock_storage_instance.get_actors.return_value = []
+
+        mock_tmdb_instance = MagicMock()
+        mock_tmdb.return_value = mock_tmdb_instance
+
+        mock_notifier_instance = MagicMock()
+        mock_notifier.return_value = mock_notifier_instance
+        mock_notifier_instance.get_releases_in_range.return_value = {
+            "movies": [
+                {
+                    "id": 1,
+                    "title": "Movie1",
+                    "release_date": (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+                }
+            ],
+            "series": [],
+            "actors": []
+        }
+
+        handler = CommandHandler("fake_key", "fake_storage.json")
+        response = handler.handle_upcoming([])
+
+        assert "🎬" in response or "Movie1" in response
+        assert "película" in response.lower() or "películas" in response.lower()
+
+    @patch('backend.handlers.Notifier')
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_upcoming_empty(self, mock_tmdb, mock_storage, mock_notifier):
+        """Test /upcoming sin resultados"""
+        mock_storage_instance = MagicMock()
+        mock_storage.return_value = mock_storage_instance
+        mock_storage_instance.get_movies.return_value = []
+        mock_storage_instance.get_actors.return_value = []
+
+        mock_tmdb_instance = MagicMock()
+        mock_tmdb.return_value = mock_tmdb_instance
+
+        mock_notifier_instance = MagicMock()
+        mock_notifier.return_value = mock_notifier_instance
+        mock_notifier_instance.get_releases_in_range.return_value = {
+            "movies": [],
+            "series": [],
+            "actors": []
+        }
+
+        handler = CommandHandler("fake_key", "fake_storage.json")
+        response = handler.handle_upcoming([])
+
+        assert "No hay estrenos" in response or "próximos 60 días" in response
+
+    @patch('backend.handlers.Notifier')
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_upcoming_filter_movies(self, mock_tmdb, mock_storage, mock_notifier):
+        """Test /upcoming movies filtra solo películas"""
+        from datetime import datetime, timedelta
+
+        mock_storage_instance = MagicMock()
+        mock_storage.return_value = mock_storage_instance
+        mock_storage_instance.get_movies.return_value = [
+            {"id": 1, "title": "Movie1"}
+        ]
+        mock_storage_instance.get_actors.return_value = [
+            {"id": 500, "name": "Actor1"}
+        ]
+
+        mock_tmdb_instance = MagicMock()
+        mock_tmdb.return_value = mock_tmdb_instance
+
+        mock_notifier_instance = MagicMock()
+        mock_notifier.return_value = mock_notifier_instance
+        mock_notifier_instance.get_releases_in_range.return_value = {
+            "movies": [
+                {
+                    "id": 1,
+                    "title": "Movie1",
+                    "release_date": (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+                }
+            ],
+            "series": [],
+            "actors": []
+        }
+
+        handler = CommandHandler("fake_key", "fake_storage.json")
+        response = handler.handle_upcoming(["movies"])
+
+        assert "Movie1" in response or "película" in response.lower()
 
 
 if __name__ == "__main__":

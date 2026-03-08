@@ -2,6 +2,7 @@ from typing import List, Optional
 import logging
 from backend.storage import Storage
 from backend.tmdb_client import TMDbClient
+from backend.notifier import Notifier
 
 logger = logging.getLogger(__name__)
 
@@ -173,3 +174,45 @@ class CommandHandler:
   Ejemplo: /help"""
 
         return help_text
+
+    def handle_upcoming(self, args: List[str]) -> str:
+        """Handle /upcoming command with optional filter (movies, series, actors)"""
+        # Determine filter
+        filter_type = "all"
+        if args and len(args) > 0:
+            filter_arg = args[0].lower()
+            if filter_arg in ["movies", "series", "actors"]:
+                filter_type = filter_arg
+
+        # Get releases in range using Notifier
+        notifier = Notifier(self.tmdb.api_key, self.storage.path)
+        releases_by_type = notifier.get_releases_in_range(days=60, filter_type=filter_type)
+
+        # Check if there are any results
+        total_releases = sum(len(v) for v in releases_by_type.values())
+        if total_releases == 0:
+            return "No hay estrenos en los próximos 60 días"
+
+        # Format response
+        response = ""
+
+        if filter_type in ["all", "movies"] and releases_by_type["movies"]:
+            response += "<b>🎬 Películas (próximos 60 días):</b>\n"
+            for release in releases_by_type["movies"]:
+                response += f"  • {release['title']} - {release['release_date']}\n"
+            response += "\n"
+
+        if filter_type in ["all", "series"] and releases_by_type["series"]:
+            response += "<b>📺 Series (próximos 60 días):</b>\n"
+            for release in releases_by_type["series"]:
+                response += f"  • {release['title']} - {release['release_date']}\n"
+            response += "\n"
+
+        if filter_type == "all" and releases_by_type["actors"]:
+            response += "<b>👤 Actores (próximos 60 días):</b>\n"
+            for release in releases_by_type["actors"]:
+                actor_name = release.get("actor", "Unknown")
+                response += f"  • {actor_name} - {release['title']} ({release['release_date']})\n"
+            response += "\n"
+
+        return response.rstrip()
