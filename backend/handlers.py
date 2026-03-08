@@ -143,7 +143,9 @@ class CommandHandler:
         if not args:
             return "❌ Por favor especifica qué remover: /remove \"Título o nombre\""
 
-        search_term = args[0].lower()
+        # Clean search term: remove any quotes that might be included
+        search_input = args[0].strip().strip('"\'""\'')  # Remove all types of quotes
+        search_term = search_input.lower()
 
         # DEBUG LOGS
         logger.info(f"[/remove] BUSCANDO: '{args[0]}' → normalizado: '{search_term}'")

@@ -44,20 +44,36 @@ class MessageParser:
         """
         Extract arguments from quoted strings in the command.
 
-        Finds all quoted strings (handles double quotes, single quotes, and curly quotes)
-        and returns them as a list, properly cleaned.
+        Handles: "text", 'text', "text" (curly), 'text' (curly), and variants.
         """
-        # Match quoted strings: regular quotes and curly quotes (Unicode)
-        # Handles: "text", 'text', "text", 'text', etc.
-        pattern = r'["\'""]([^"\'"]*)["\'""]'
-        matches = re.findall(pattern, message)
-
-        # Clean up: strip whitespace and extra quotes from each match
         cleaned = []
-        for match in matches:
-            # Remove any leading/trailing quotes and whitespace
-            clean_str = match.strip().strip('"\' \'"').strip()
-            if clean_str:  # Only add non-empty strings
-                cleaned.append(clean_str)
 
-        return cleaned
+        # Try double quotes first
+        double_pattern = r'"([^"]*)"'
+        double_matches = re.findall(double_pattern, message)
+        cleaned.extend([m.strip() for m in double_matches if m.strip()])
+
+        # Try single quotes (but avoid already matched double quotes)
+        single_pattern = r"'([^']*)'"
+        single_matches = re.findall(single_pattern, message)
+        cleaned.extend([m.strip() for m in single_matches if m.strip()])
+
+        # Try curly quotes (Unicode)
+        curly_double = r'"([^"]*)"'
+        curly_matches = re.findall(curly_double, message)
+        cleaned.extend([m.strip() for m in curly_matches if m.strip()])
+
+        # Try curly single quotes (Unicode)
+        curly_single = r''([^']*)'''
+        curly_single_matches = re.findall(curly_single, message)
+        cleaned.extend([m.strip() for m in curly_single_matches if m.strip()])
+
+        # Remove duplicates while preserving order
+        seen = set()
+        result = []
+        for item in cleaned:
+            if item not in seen:
+                seen.add(item)
+                result.append(item)
+
+        return result
