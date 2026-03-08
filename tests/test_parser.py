@@ -1,3 +1,4 @@
+import logging
 import pytest
 from backend.parser import MessageParser
 
@@ -40,3 +41,11 @@ class TestMessageParser:
         assert result["type"] == "command"
         assert result["command"] == "help"
         assert result["args"] == []
+
+    def test_parse_logs_command_details(self, caplog):
+        parser = MessageParser()
+        with caplog.at_level(logging.DEBUG):
+            result = parser.parse('/add "Dune"')
+
+        assert 'command' in caplog.text.lower()
+        assert 'dune' in caplog.text.lower()
