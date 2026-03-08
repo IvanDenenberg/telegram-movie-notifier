@@ -197,3 +197,35 @@ class TMDbClient:
                 releases.append(movie)
 
         return releases
+
+    def get_movie_by_id(self, movie_id: int) -> Optional[Dict]:
+        """Get movie details by TMDb ID"""
+        self.logger.debug(f"[GET_MOVIE_BY_ID] Fetching movie ID: {movie_id}")
+        data = self._make_request(f"/movie/{movie_id}", {})
+
+        if not data:
+            self.logger.debug(f"[GET_MOVIE_BY_ID] Movie not found: {movie_id}")
+            return None
+
+        if data.get("title") and data.get("release_date"):
+            self.logger.debug(f"[GET_MOVIE_BY_ID] Found: {data.get('title')}")
+            return data
+
+        self.logger.debug(f"[GET_MOVIE_BY_ID] Movie missing required fields: {movie_id}")
+        return None
+
+    def get_tv_by_id(self, tv_id: int) -> Optional[Dict]:
+        """Get TV show details by TMDb ID"""
+        self.logger.debug(f"[GET_TV_BY_ID] Fetching TV ID: {tv_id}")
+        data = self._make_request(f"/tv/{tv_id}", {})
+
+        if not data:
+            self.logger.debug(f"[GET_TV_BY_ID] TV show not found: {tv_id}")
+            return None
+
+        if data.get("name") and data.get("first_air_date"):
+            self.logger.debug(f"[GET_TV_BY_ID] Found: {data.get('name')}")
+            return data
+
+        self.logger.debug(f"[GET_TV_BY_ID] TV show missing required fields: {tv_id}")
+        return None

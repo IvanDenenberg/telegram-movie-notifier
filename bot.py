@@ -118,6 +118,8 @@ Usa /help para ver todos los comandos disponibles."""
                 return self.command_handler.handle_help()
             elif command == "upcoming":
                 return self.command_handler.handle_upcoming(args)
+            elif command == "add_by_id":
+                return self.command_handler.handle_add_by_id(args)
             else:
                 return f"❌ Comando desconocido: /{command}. Usa /help para ver los comandos disponibles."
         except Exception as e:
@@ -180,6 +182,7 @@ Usa /help para ver todos los comandos disponibles."""
         # Handlers para comandos de control
         self.app.add_handler(CommandHandler("add", self._command_wrapper("add")))
         self.app.add_handler(CommandHandler("add_actor", self._command_wrapper("add_actor")))
+        self.app.add_handler(CommandHandler("add_by_id", self._command_wrapper("add_by_id")))
         self.app.add_handler(CommandHandler("list", self._command_wrapper("list")))
         self.app.add_handler(CommandHandler("remove", self._command_wrapper("remove")))
         self.app.add_handler(CommandHandler("help", self._command_wrapper("help")))

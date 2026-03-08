@@ -255,3 +255,39 @@ class CommandHandler:
             response += "\n"
 
         return response.rstrip()
+
+    def handle_add_by_id(self, args: List[str]) -> str:
+        """Handle /add_by_id command - add by TMDb ID"""
+        if not args:
+            return "❌ Por favor especifica un ID de TMDb: /add_by_id 438632"
+
+        try:
+            tmdb_id = int(args[0])
+        except ValueError:
+            self.logger.warning(f"[HANDLE_ADD_BY_ID] Invalid ID format: {args[0]}")
+            return f"❌ ID inválido: {args[0]}. Debe ser un número."
+
+        # Determine type: movie or tv
+        media_type = "movie"
+        if len(args) > 1 and args[1].lower() == "tv":
+            media_type = "tv"
+
+        self.logger.debug(f"[HANDLE_ADD_BY_ID] Adding by ID: {tmdb_id}, type: {media_type}")
+
+        if media_type == "tv":
+            data = self.tmdb.get_tv_by_id(tmdb_id)
+            if data:
+                self.storage.add_movie(data.get("name", f"ID {tmdb_id}"), tmdb_id, media_type="tv")
+                self.logger.info(f"[HANDLE_ADD_BY_ID] TV show added by ID: {data.get('name')}")
+                tmdb_link = f"https://www.themoviedb.org/tv/{tmdb_id}"
+                return f"✅ '{data.get('name')}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+        else:
+            data = self.tmdb.get_movie_by_id(tmdb_id)
+            if data:
+                self.storage.add_movie(data.get("title", f"ID {tmdb_id}"), tmdb_id, media_type="movie")
+                self.logger.info(f"[HANDLE_ADD_BY_ID] Movie added by ID: {data.get('title')}")
+                tmdb_link = f"https://www.themoviedb.org/movie/{tmdb_id}"
+                return f"✅ '{data.get('title')}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+
+        self.logger.warning(f"[HANDLE_ADD_BY_ID] Item not found: {tmdb_id}")
+        return f"❌ No encontré un elemento con ID {tmdb_id} en TMDb."
