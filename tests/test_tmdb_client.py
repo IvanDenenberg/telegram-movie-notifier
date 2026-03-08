@@ -217,5 +217,22 @@ class TestTMDbClient(unittest.TestCase):
         assert "api_key" not in call_kwargs.get("params", {})
 
 
+
 if __name__ == "__main__":
     unittest.main()
+
+
+# Pytest-style test for logging
+def test_search_movie_logs_query(caplog):
+    """Test that search_movie logs debug output"""
+    import logging
+    with patch('backend.http_client.RequestManager.get') as mock_get:
+        client = TMDbClient("test_key")
+        mock_get.return_value = {
+            "results": [{"title": "Dune", "id": 438632, "release_date": "2021-10-01"}]
+        }
+
+        with caplog.at_level(logging.DEBUG):
+            result = client.search_movie("Dune")
+
+        assert "search_movie" in caplog.text.lower() or "dune" in caplog.text.lower()
