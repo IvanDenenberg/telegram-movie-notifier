@@ -24,12 +24,29 @@ class TMDbClient:
         return self.request_manager.get(url, params=params, headers=headers)
 
     def search_movie(self, title: str) -> Optional[Dict]:
-        """Search for a movie by title"""
+        """Search for a movie by title - prefers exact matches"""
         data = self._make_request("/search/movie", {"query": title})
         if not data or "results" not in data or not data["results"]:
             return None
 
-        # Filter for valid results (with release_date and title)
+        # Normalize search title for comparison
+        search_title_lower = title.lower().strip()
+
+        # First pass: look for exact title match
+        for result in data["results"]:
+            if result.get("title") and result.get("release_date"):
+                result_title_lower = result["title"].lower().strip()
+                if result_title_lower == search_title_lower:
+                    return result
+
+        # Second pass: look for titles starting with search term
+        for result in data["results"]:
+            if result.get("title") and result.get("release_date"):
+                result_title_lower = result["title"].lower().strip()
+                if result_title_lower.startswith(search_title_lower):
+                    return result
+
+        # Fall back to first valid result
         for result in data["results"]:
             if result.get("title") and result.get("release_date"):
                 return result
@@ -37,12 +54,29 @@ class TMDbClient:
         return None
 
     def search_tv(self, title: str) -> Optional[Dict]:
-        """Search for a TV show by title"""
+        """Search for a TV show by title - prefers exact matches"""
         data = self._make_request("/search/tv", {"query": title})
         if not data or "results" not in data or not data["results"]:
             return None
 
-        # Filter for valid results (with first_air_date and name)
+        # Normalize search title for comparison
+        search_title_lower = title.lower().strip()
+
+        # First pass: look for exact title match
+        for result in data["results"]:
+            if result.get("name") and result.get("first_air_date"):
+                result_name_lower = result["name"].lower().strip()
+                if result_name_lower == search_title_lower:
+                    return result
+
+        # Second pass: look for titles starting with search term
+        for result in data["results"]:
+            if result.get("name") and result.get("first_air_date"):
+                result_name_lower = result["name"].lower().strip()
+                if result_name_lower.startswith(search_title_lower):
+                    return result
+
+        # Fall back to first valid result
         for result in data["results"]:
             if result.get("name") and result.get("first_air_date"):
                 return result
