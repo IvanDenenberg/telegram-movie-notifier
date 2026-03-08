@@ -49,3 +49,6 @@ data/movies.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Git Worktrees
+.worktrees/
