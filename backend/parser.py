@@ -44,9 +44,20 @@ class MessageParser:
         """
         Extract arguments from quoted strings in the command.
 
-        Finds all quoted strings (double or single quotes) and returns them as a list.
+        Finds all quoted strings (handles double quotes, single quotes, and curly quotes)
+        and returns them as a list, properly cleaned.
         """
-        # Match quoted strings (double or single quotes)
-        pattern = r'["\']([^"\']*)["\']'
+        # Match quoted strings: regular quotes and curly quotes (Unicode)
+        # Handles: "text", 'text', "text", 'text', etc.
+        pattern = r'["\'""]([^"\'"]*)["\'""]'
         matches = re.findall(pattern, message)
-        return matches
+
+        # Clean up: strip whitespace and extra quotes from each match
+        cleaned = []
+        for match in matches:
+            # Remove any leading/trailing quotes and whitespace
+            clean_str = match.strip().strip('"\' \'"').strip()
+            if clean_str:  # Only add non-empty strings
+                cleaned.append(clean_str)
+
+        return cleaned
