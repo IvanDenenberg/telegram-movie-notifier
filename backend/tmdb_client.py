@@ -416,6 +416,25 @@ class TMDbClient:
 
         return filmography
 
+    def get_director_tv_credits(self, director_id: int) -> List[Dict]:
+        """Get director's TV show credits - only where job='Director'"""
+        data = self._make_request(
+            f"/person/{director_id}/tv_credits",
+            {}
+        )
+        if not data:
+            return []
+
+        # Filter for Director role in crew
+        tv_credits = []
+
+        if "crew" in data:
+            for show in data["crew"]:
+                if show.get("job") == "Director" and show.get("name") and show.get("first_air_date"):
+                    tv_credits.append(show)
+
+        return tv_credits
+
     def get_actor_filmography(self, actor_id: int) -> List[Dict]:
         """Get actor's movie filmography"""
         data = self._make_request(

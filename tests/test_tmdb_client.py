@@ -454,6 +454,32 @@ class TestTMDbClient(unittest.TestCase):
         self.assertEqual(result[0]["title"], "Fight Club")
         self.assertEqual(result[1]["title"], "The Shawshank Redemption")
 
+    @patch('backend.http_client.RequestManager.get')
+    def test_get_director_tv_credits(self, mock_get):
+        """Test getting director's TV credits filtered by Director job"""
+        mock_get.return_value = {
+            "crew": [
+                {
+                    "id": 1399,
+                    "name": "Breaking Bad",
+                    "first_air_date": "2008-01-20",
+                    "job": "Director"
+                },
+                {
+                    "id": 1396,
+                    "name": "Better Call Saul",
+                    "first_air_date": "2015-02-09",
+                    "job": "Producer"  # Should be filtered out
+                }
+            ]
+        }
+
+        result = self.client.get_director_tv_credits(3179)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "Breaking Bad")
+
 
 
 if __name__ == "__main__":
