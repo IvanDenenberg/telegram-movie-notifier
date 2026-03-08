@@ -147,6 +147,8 @@ Usa /help para ver todos los comandos disponibles."""
                 return self.command_handler.handle_add(args)
             elif command == "add_actor":
                 return self.command_handler.handle_add_actor(args)
+            elif command == "add_director":
+                return self.command_handler.handle_add_director(args)
             elif command == "list":
                 return self.command_handler.handle_list(args)
             elif command == "remove":
@@ -222,6 +224,7 @@ Usa /help para ver todos los comandos disponibles."""
         # Handlers para comandos de control
         self.app.add_handler(CommandHandler("add", self._command_wrapper("add")))
         self.app.add_handler(CommandHandler("add_actor", self._command_wrapper("add_actor")))
+        self.app.add_handler(CommandHandler("add_director", self._command_wrapper("add_director")))
         self.app.add_handler(CommandHandler("add_by_id", self._command_wrapper("add_by_id")))
         self.app.add_handler(CommandHandler("list", self._command_wrapper("list")))
         self.app.add_handler(CommandHandler("remove", self._command_wrapper("remove")))
