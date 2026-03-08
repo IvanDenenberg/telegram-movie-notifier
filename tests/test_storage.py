@@ -112,3 +112,44 @@ def test_remove_actor():
 
         result = storage.remove_actor(999)
         assert result is False
+
+
+def test_add_director():
+    """Test adding a director to storage"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        storage_path = Path(tmpdir) / "movies.json"
+        storage = Storage(str(storage_path))
+        storage.add_director("Quentin Tarantino", 3179)
+
+        data = storage._load_data()
+        assert len(data["directors"]) == 1
+        assert data["directors"][0]["name"] == "Quentin Tarantino"
+        assert data["directors"][0]["id"] == 3179
+        assert "added_date" in data["directors"][0]
+
+
+def test_remove_director():
+    """Test removing a director from storage"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        storage_path = Path(tmpdir) / "movies.json"
+        storage = Storage(str(storage_path))
+        storage.add_director("Quentin Tarantino", 3179)
+
+        result = storage.remove_director(3179)
+        assert result is True
+
+        data = storage._load_data()
+        assert len(data["directors"]) == 0
+
+
+def test_get_directors():
+    """Test retrieving all directors"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        storage_path = Path(tmpdir) / "movies.json"
+        storage = Storage(str(storage_path))
+        storage.add_director("Quentin Tarantino", 3179)
+        storage.add_director("Steven Spielberg", 488)
+
+        directors = storage.get_directors()
+        assert len(directors) == 2
+        assert directors[0]["name"] == "Quentin Tarantino"

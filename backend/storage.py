@@ -19,6 +19,7 @@ class Storage:
         data = {
             "movies": [],
             "actors": [],
+            "directors": [],
             "notified": []
         }
         with open(self.path, 'w') as f:
@@ -71,6 +72,47 @@ class Storage:
         self._save_data(data)
         self.logger.debug(f"[STORAGE.ADD_ACTOR] Successfully saved to storage")
 
+    def add_director(self, name: str, tmdb_id: int):
+        """Agrega un director"""
+        self.logger.debug(f"[STORAGE.ADD_DIRECTOR] Adding director: {name} (ID: {tmdb_id})")
+        data = self._load_data()
+
+        # Evita duplicados
+        if any(director["id"] == tmdb_id for director in data.get("directors", [])):
+            return
+
+        director = {
+            "name": name,
+            "id": tmdb_id,
+            "added_date": datetime.now().isoformat()
+        }
+
+        # Ensure directors array exists
+        if "directors" not in data:
+            data["directors"] = []
+
+        data["directors"].append(director)
+        self._save_data(data)
+        self.logger.debug(f"[STORAGE.ADD_DIRECTOR] Successfully saved to storage")
+
+    def remove_director(self, tmdb_id: int) -> bool:
+        """Elimina un director"""
+        self.logger.debug(f"[STORAGE.REMOVE_DIRECTOR] Removing director ID: {tmdb_id}")
+        data = self._load_data()
+
+        if "directors" not in data:
+            return False
+
+        initial_length = len(data["directors"])
+        data["directors"] = [d for d in data["directors"] if d["id"] != tmdb_id]
+
+        if len(data["directors"]) < initial_length:
+            self._save_data(data)
+            self.logger.debug(f"[STORAGE.REMOVE_DIRECTOR] Director removed successfully")
+            return True
+
+        return False
+
     def remove_movie(self, tmdb_id: int) -> bool:
         """Elimina una película"""
         self.logger.debug(f"[STORAGE.REMOVE_MOVIE] Removing movie ID: {tmdb_id}")
@@ -101,6 +143,11 @@ class Storage:
         """Obtiene todas las películas"""
         data = self._load_data()
         return data["movies"]
+
+    def get_directors(self) -> List[Dict]:
+        """Obtiene todos los directores"""
+        data = self._load_data()
+        return data.get("directors", [])
 
     def get_actors(self) -> List[Dict]:
         """Obtiene todos los actores"""
