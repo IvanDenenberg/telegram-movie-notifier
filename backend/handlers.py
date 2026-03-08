@@ -31,7 +31,9 @@ class CommandHandler:
             self.logger.info(f"[HANDLE_ADD] Movie added: {movie.get('title')} (ID: {movie.get('id')})")
             movie_id = movie.get("id")
             tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
-            return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            response = f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            undo_action = f'/remove "{movie.get("title", title)}"'
+            return f"{response}|||UNDO_BUTTON||{undo_action}"
 
         # No exact match - show top 3 movie options
         movie_options = self.tmdb.get_search_results(title, "movie")
@@ -52,7 +54,9 @@ class CommandHandler:
             self.logger.info(f"[HANDLE_ADD] TV show added: {tv.get('name')} (ID: {tv.get('id')})")
             tv_id = tv.get("id")
             tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
-            return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            response = f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+            undo_action = f'/remove "{tv.get("name", title)}"'
+            return f"{response}|||UNDO_BUTTON||{undo_action}"
 
         # No exact match - show top 3 TV options
         tv_options = self.tmdb.get_search_results(title, "tv")
@@ -108,7 +112,9 @@ class CommandHandler:
         self.storage.add_actor(actor_name, actor_id)
         self.logger.info(f"[HANDLE_ADD_ACTOR] Actor added: {actor_name} (ID: {actor_id})")
         tmdb_link = f"https://www.themoviedb.org/person/{actor_id}"
-        return f"✅ Monitoreando a {actor_name} 👤\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+        response = f"✅ Monitoreando a {actor_name} 👤\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+        undo_action = f'/remove "{actor_name}"'
+        return f"{response}|||UNDO_BUTTON||{undo_action}"
 
     def handle_list(self, args: List[str] = None) -> str:
         """Handle /list command - show movies, actors, or both"""
@@ -294,14 +300,18 @@ class CommandHandler:
                 self.storage.add_movie(data.get("name", f"ID {tmdb_id}"), tmdb_id, media_type="tv")
                 self.logger.info(f"[HANDLE_ADD_BY_ID] TV show added by ID: {data.get('name')}")
                 tmdb_link = f"https://www.themoviedb.org/tv/{tmdb_id}"
-                return f"✅ '{data.get('name')}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+                response = f"✅ '{data.get('name')}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+                undo_action = f'/remove "{data.get("name")}"'
+                return f"{response}|||UNDO_BUTTON||{undo_action}"
         else:
             data = self.tmdb.get_movie_by_id(tmdb_id)
             if data:
                 self.storage.add_movie(data.get("title", f"ID {tmdb_id}"), tmdb_id, media_type="movie")
                 self.logger.info(f"[HANDLE_ADD_BY_ID] Movie added by ID: {data.get('title')}")
                 tmdb_link = f"https://www.themoviedb.org/movie/{tmdb_id}"
-                return f"✅ '{data.get('title')}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+                response = f"✅ '{data.get('title')}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+                undo_action = f'/remove "{data.get("title")}"'
+                return f"{response}|||UNDO_BUTTON||{undo_action}"
 
         self.logger.warning(f"[HANDLE_ADD_BY_ID] Item not found: {tmdb_id}")
         return f"❌ No encontré un elemento con ID {tmdb_id} en TMDb."

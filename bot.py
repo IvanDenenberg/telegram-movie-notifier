@@ -5,8 +5,9 @@ from datetime import time
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler, ContextTypes, filters
+    Application, CommandHandler, MessageHandler, ContextTypes, filters, CallbackQueryHandler
 )
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from backend.handlers import CommandHandler as BotCommandHandler
 from backend.parser import MessageParser
 from backend.ai_processor import AIProcessor
@@ -74,6 +75,30 @@ Usa /help para ver todos los comandos disponibles."""
 
         await update.message.reply_text(welcome_message)
 
+    async def handle_undo_button(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle undo button clicks"""
+        query = update.callback_query
+        await query.answer()
+
+        # Extract remove command from callback data
+        callback_data = query.data
+        # callback_data is like: "undo_/remove_title_here"
+        self.logger.debug(f"[UNDO_BUTTON] Callback: {callback_data}")
+
+        # Reconstruct the remove command
+        parts = callback_data.split("_", 1)  # Split only on first underscore
+        if len(parts) == 2:
+            remove_cmd = parts[1].replace("_", " ")
+            title = remove_cmd.replace("/remove ", "").strip('"')
+
+            self.logger.debug(f"[UNDO_BUTTON] Removing: {title}")
+
+            response = self.command_handler.handle_remove([title])
+            await query.edit_message_text(
+                text=f"<s>{query.message.text_html}</s>\n\n{response}",
+                parse_mode="HTML"
+            )
+
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Procesar mensaje: comando o texto libre"""
         try:
@@ -92,7 +117,19 @@ Usa /help para ver todos los comandos disponibles."""
                 else:
                     response = "❌ No entiendo ese mensaje. Usa /help para ver los comandos disponibles."
 
-            await update.message.reply_text(response, parse_mode="HTML")
+            # Check if response includes undo button
+            if "|||UNDO_BUTTON||" in response:
+                message_text, undo_action = response.split("|||UNDO_BUTTON||")
+
+                # Create inline keyboard with undo button
+                keyboard = [[
+                    InlineKeyboardButton("❌ Deshacer", callback_data=f"undo_{undo_action.replace(' ', '_').replace('"', '')}")
+                ]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                await update.message.reply_text(message_text, parse_mode="HTML", reply_markup=reply_markup)
+            else:
+                await update.message.reply_text(response, parse_mode="HTML")
         except Exception as e:
             sanitized_error = self.security_manager.sanitize(str(e))
             self.logger.error(f"Error procesando mensaje: {sanitized_error}")
@@ -188,6 +225,9 @@ Usa /help para ver todos los comandos disponibles."""
         self.app.add_handler(CommandHandler("help", self._command_wrapper("help")))
         self.app.add_handler(CommandHandler("upcoming", self._command_wrapper("upcoming")))
 
+        # Handler para botón undo
+        self.app.add_handler(CallbackQueryHandler(self.handle_undo_button, pattern="^undo_"))
+
         # Handler para mensajes de texto libre
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
@@ -206,7 +246,19 @@ Usa /help para ver todos los comandos disponibles."""
 
             response = await self._handle_command(parsed)
             if update.message:
-                await update.message.reply_text(response, parse_mode="HTML")
+                # Check if response includes undo button
+                if "|||UNDO_BUTTON||" in response:
+                    message_text, undo_action = response.split("|||UNDO_BUTTON||")
+
+                    # Create inline keyboard with undo button
+                    keyboard = [[
+                        InlineKeyboardButton("❌ Deshacer", callback_data=f"undo_{undo_action.replace(' ', '_').replace('"', '')}")
+                    ]]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+
+                    await update.message.reply_text(message_text, parse_mode="HTML", reply_markup=reply_markup)
+                else:
+                    await update.message.reply_text(response, parse_mode="HTML")
 
         return handler
 
