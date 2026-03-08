@@ -1,5 +1,6 @@
 import logging
-from typing import Optional, Dict, List
+import re
+from typing import Optional, Dict, List, Tuple
 from backend.http_client import RequestManager
 
 
@@ -11,6 +12,23 @@ class TMDbClient:
         self.logger = logging.getLogger(__name__)
         self.api_key = api_key
         self.request_manager = RequestManager(timeout=5)
+
+    def _extract_year_from_search(self, search_text: str) -> Tuple[str, Optional[str]]:
+        """Extract year from search text. Returns (cleaned_text, year) where year is YYYY format or None"""
+        # Match 4-digit year between 1900 and 2099
+        year_match = re.search(r'\b([12]\d{3})\b', search_text)
+        if year_match:
+            year = year_match.group(1)
+            # Remove year from text
+            cleaned = re.sub(r'\b' + year + r'\b', '', search_text).strip()
+            return cleaned, year
+        return search_text.strip(), None
+
+    def _match_year(self, date_string: str, year: str) -> bool:
+        """Check if a date string (YYYY-MM-DD) matches the target year"""
+        if not date_string or not year:
+            return False
+        return date_string.startswith(year)
 
     def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Dict]:
         """Make HTTP request to TMDb API with secure headers"""
@@ -26,10 +44,17 @@ class TMDbClient:
         return self.request_manager.get(url, params=params, headers=headers)
 
     def search_movie(self, title: str) -> Optional[Dict]:
-        """Search for a movie by title - prefers exact matches"""
+        """Search for a movie by title - prefers exact matches, then most popular. Supports year filtering."""
         self.logger.debug(f"[SEARCH_MOVIE] Querying TMDb for: {title}")
 
-        data = self._make_request("/search/movie", {"query": title})
+        # Extract year from search if present
+        search_without_year, target_year = self._extract_year_from_search(title)
+        if target_year:
+            self.logger.debug(f"[SEARCH_MOVIE] Year filter detected: {target_year}")
+
+        # Use search_without_year for API query if year was found, otherwise use original title
+        api_query = search_without_year if search_without_year else title
+        data = self._make_request("/search/movie", {"query": api_query})
         if not data or "results" not in data or not data["results"]:
             self.logger.debug(f"[SEARCH_MOVIE] No results found for: {title}")
             return None
@@ -38,6 +63,8 @@ class TMDbClient:
 
         # Normalize search title for comparison
         search_title_lower = title.lower().strip()
+        search_without_year_lower = search_without_year.lower().strip()
+        search_words = set(search_without_year_lower.split()) if search_without_year_lower else set()
 
         # First pass: look for exact title match
         for result in data["results"]:
@@ -47,28 +74,73 @@ class TMDbClient:
                     self.logger.debug(f"[SEARCH_MOVIE] Exact match found: {result['title']} (ID: {result.get('id')})")
                     return result
 
-        # Second pass: look for titles starting with search term
+        # Second pass: look for titles containing all search words (multi-word matches), optionally filter by year
+        candidates = []
         for result in data["results"]:
             if result.get("title") and result.get("release_date"):
                 result_title_lower = result["title"].lower().strip()
-                if result_title_lower.startswith(search_title_lower):
+                result_words = set(result_title_lower.split())
+
+                # Check if all search words are in result title
+                if search_words and search_words.issubset(result_words):
+                    # If year filter exists, only consider results from that year
+                    if target_year and not self._match_year(result.get("release_date", ""), target_year):
+                        continue
+
+                    popularity = result.get("popularity", 0)
+                    candidates.append((popularity, result))
+
+        if candidates:
+            # Sort by popularity (descending) and take the most popular
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            best_match = candidates[0][1]
+            self.logger.debug(f"[SEARCH_MOVIE] Multi-word match found: {best_match['title']} (ID: {best_match.get('id')}, popularity: {best_match.get('popularity')})")
+            return best_match
+
+        # Third pass: look for titles starting with search term (without year part)
+        for result in data["results"]:
+            if result.get("title") and result.get("release_date"):
+                result_title_lower = result["title"].lower().strip()
+                if search_without_year_lower and result_title_lower.startswith(search_without_year_lower):
+                    # If year filter exists, only consider results from that year
+                    if target_year and not self._match_year(result.get("release_date", ""), target_year):
+                        continue
                     self.logger.debug(f"[SEARCH_MOVIE] Prefix match found: {result['title']} (ID: {result.get('id')})")
                     return result
 
-        # Fall back to first valid result
+        # Fall back to most popular valid result
+        best_result = None
+        best_popularity = -1
         for result in data["results"]:
             if result.get("title") and result.get("release_date"):
-                self.logger.debug(f"[SEARCH_MOVIE] Using first valid result: {result['title']} (ID: {result.get('id')})")
-                return result
+                # If year filter exists, only consider results from that year
+                if target_year and not self._match_year(result.get("release_date", ""), target_year):
+                    continue
+
+                popularity = result.get("popularity", 0)
+                if popularity > best_popularity:
+                    best_popularity = popularity
+                    best_result = result
+
+        if best_result:
+            self.logger.debug(f"[SEARCH_MOVIE] Using most popular result: {best_result['title']} (ID: {best_result.get('id')}, popularity: {best_popularity})")
+            return best_result
 
         self.logger.debug(f"[SEARCH_MOVIE] No valid results for: {title}")
         return None
 
     def search_tv(self, title: str) -> Optional[Dict]:
-        """Search for a TV show by title - prefers exact matches"""
+        """Search for a TV show by title - prefers exact matches, then most popular. Supports year filtering."""
         self.logger.debug(f"[SEARCH_TV] Querying TMDb for: {title}")
 
-        data = self._make_request("/search/tv", {"query": title})
+        # Extract year from search if present
+        search_without_year, target_year = self._extract_year_from_search(title)
+        if target_year:
+            self.logger.debug(f"[SEARCH_TV] Year filter detected: {target_year}")
+
+        # Use search_without_year for API query if year was found, otherwise use original title
+        api_query = search_without_year if search_without_year else title
+        data = self._make_request("/search/tv", {"query": api_query})
         if not data or "results" not in data or not data["results"]:
             self.logger.debug(f"[SEARCH_TV] No results found for: {title}")
             return None
@@ -77,6 +149,8 @@ class TMDbClient:
 
         # Normalize search title for comparison
         search_title_lower = title.lower().strip()
+        search_without_year_lower = search_without_year.lower().strip()
+        search_words = set(search_without_year_lower.split()) if search_without_year_lower else set()
 
         # First pass: look for exact title match
         for result in data["results"]:
@@ -86,19 +160,57 @@ class TMDbClient:
                     self.logger.debug(f"[SEARCH_TV] Exact match found: {result['name']} (ID: {result.get('id')})")
                     return result
 
-        # Second pass: look for titles starting with search term
+        # Second pass: look for titles containing all search words (multi-word matches), optionally filter by year
+        candidates = []
         for result in data["results"]:
             if result.get("name") and result.get("first_air_date"):
                 result_name_lower = result["name"].lower().strip()
-                if result_name_lower.startswith(search_title_lower):
+                result_words = set(result_name_lower.split())
+
+                # Check if all search words are in result name
+                if search_words and search_words.issubset(result_words):
+                    # If year filter exists, only consider results from that year
+                    if target_year and not self._match_year(result.get("first_air_date", ""), target_year):
+                        continue
+
+                    popularity = result.get("popularity", 0)
+                    candidates.append((popularity, result))
+
+        if candidates:
+            # Sort by popularity (descending) and take the most popular
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            best_match = candidates[0][1]
+            self.logger.debug(f"[SEARCH_TV] Multi-word match found: {best_match['name']} (ID: {best_match.get('id')}, popularity: {best_match.get('popularity')})")
+            return best_match
+
+        # Third pass: look for titles starting with search term (without year part)
+        for result in data["results"]:
+            if result.get("name") and result.get("first_air_date"):
+                result_name_lower = result["name"].lower().strip()
+                if search_without_year_lower and result_name_lower.startswith(search_without_year_lower):
+                    # If year filter exists, only consider results from that year
+                    if target_year and not self._match_year(result.get("first_air_date", ""), target_year):
+                        continue
                     self.logger.debug(f"[SEARCH_TV] Prefix match found: {result['name']} (ID: {result.get('id')})")
                     return result
 
-        # Fall back to first valid result
+        # Fall back to most popular valid result
+        best_result = None
+        best_popularity = -1
         for result in data["results"]:
             if result.get("name") and result.get("first_air_date"):
-                self.logger.debug(f"[SEARCH_TV] Using first valid result: {result['name']} (ID: {result.get('id')})")
-                return result
+                # If year filter exists, only consider results from that year
+                if target_year and not self._match_year(result.get("first_air_date", ""), target_year):
+                    continue
+
+                popularity = result.get("popularity", 0)
+                if popularity > best_popularity:
+                    best_popularity = popularity
+                    best_result = result
+
+        if best_result:
+            self.logger.debug(f"[SEARCH_TV] Using most popular result: {best_result['name']} (ID: {best_result.get('id')}, popularity: {best_popularity})")
+            return best_result
 
         self.logger.debug(f"[SEARCH_TV] No valid results for: {title}")
         return None
@@ -126,7 +238,7 @@ class TMDbClient:
         return results
 
     def get_actor_id(self, actor_name: str) -> Optional[int]:
-        """Get actor ID by name - prefers exact matches"""
+        """Get actor ID by name - prefers exact matches, then most popular"""
         self.logger.debug(f"[GET_ACTOR_ID] Searching for actor: {actor_name}")
 
         data = self._make_request("/search/person", {"query": actor_name})
@@ -138,6 +250,7 @@ class TMDbClient:
 
         # Normalize search name for comparison
         search_name_lower = actor_name.lower().strip()
+        search_words = set(search_name_lower.split())
 
         # First pass: look for exact name match
         for result in data["results"]:
@@ -147,7 +260,25 @@ class TMDbClient:
                     self.logger.debug(f"[GET_ACTOR_ID] Exact match found: {result['name']} (ID: {result.get('id')})")
                     return result.get("id")
 
-        # Second pass: look for names starting with search term
+        # Second pass: look for names containing all search words (multi-word matches)
+        candidates = []
+        for result in data["results"]:
+            if result.get("name") and result.get("id"):
+                result_name_lower = result["name"].lower().strip()
+                result_words = set(result_name_lower.split())
+                # Check if all search words are in result name
+                if search_words.issubset(result_words):
+                    popularity = result.get("popularity", 0)
+                    candidates.append((popularity, result))
+
+        if candidates:
+            # Sort by popularity (descending) and take the most popular
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            best_match = candidates[0][1]
+            self.logger.debug(f"[GET_ACTOR_ID] Multi-word match found: {best_match['name']} (ID: {best_match.get('id')}, popularity: {best_match.get('popularity')})")
+            return best_match.get("id")
+
+        # Third pass: look for names starting with search term
         for result in data["results"]:
             if result.get("name"):
                 result_name_lower = result["name"].lower().strip()
@@ -155,18 +286,115 @@ class TMDbClient:
                     self.logger.debug(f"[GET_ACTOR_ID] Prefix match found: {result['name']} (ID: {result.get('id')})")
                     return result.get("id")
 
-        # Fall back to first result (with popularity check - must have known_for_department)
+        # Fall back to most popular result with known_for_department
+        best_result = None
+        best_popularity = -1
         for result in data["results"]:
             if result.get("id") and result.get("known_for_department"):
-                self.logger.debug(f"[GET_ACTOR_ID] Using result with known_for_department: {result['name']} (ID: {result.get('id')})")
-                return result.get("id")
+                popularity = result.get("popularity", 0)
+                if popularity > best_popularity:
+                    best_popularity = popularity
+                    best_result = result
 
-        # Last resort: first result with ID
-        if data["results"] and data["results"][0].get("id"):
-            self.logger.debug(f"[GET_ACTOR_ID] Using first result: {data['results'][0].get('name')} (ID: {data['results'][0]['id']})")
-            return data["results"][0]["id"]
+        if best_result:
+            self.logger.debug(f"[GET_ACTOR_ID] Using most popular result: {best_result['name']} (ID: {best_result.get('id')}, popularity: {best_popularity})")
+            return best_result.get("id")
+
+        # Last resort: most popular result with ID
+        best_result = None
+        best_popularity = -1
+        for result in data["results"]:
+            if result.get("id"):
+                popularity = result.get("popularity", 0)
+                if popularity > best_popularity:
+                    best_popularity = popularity
+                    best_result = result
+
+        if best_result:
+            self.logger.debug(f"[GET_ACTOR_ID] Using most popular result (last resort): {best_result.get('name')} (ID: {best_result['id']}, popularity: {best_popularity})")
+            return best_result.get("id")
 
         self.logger.debug(f"[GET_ACTOR_ID] No valid results for: {actor_name}")
+        return None
+
+    def get_director_id(self, director_name: str) -> Optional[int]:
+        """Get director ID by name - prefers exact matches, then most popular"""
+        self.logger.debug(f"[GET_DIRECTOR_ID] Searching for director: {director_name}")
+
+        data = self._make_request("/search/person", {"query": director_name})
+        if not data or "results" not in data or not data["results"]:
+            self.logger.debug(f"[GET_DIRECTOR_ID] No results for: {director_name}")
+            return None
+
+        self.logger.debug(f"[GET_DIRECTOR_ID] Found {len(data['results'])} results")
+
+        # Normalize search name for comparison
+        search_name_lower = director_name.lower().strip()
+        search_words = set(search_name_lower.split())
+
+        # First pass: look for exact name match
+        for result in data["results"]:
+            if result.get("name"):
+                result_name_lower = result["name"].lower().strip()
+                if result_name_lower == search_name_lower:
+                    self.logger.debug(f"[GET_DIRECTOR_ID] Exact match found: {result['name']} (ID: {result.get('id')})")
+                    return result.get("id")
+
+        # Second pass: look for names containing all search words (multi-word matches)
+        candidates = []
+        for result in data["results"]:
+            if result.get("name") and result.get("id"):
+                result_name_lower = result["name"].lower().strip()
+                result_words = set(result_name_lower.split())
+                # Check if all search words are in result name
+                if search_words.issubset(result_words):
+                    popularity = result.get("popularity", 0)
+                    candidates.append((popularity, result))
+
+        if candidates:
+            # Sort by popularity (descending) and take the most popular
+            candidates.sort(key=lambda x: x[0], reverse=True)
+            best_match = candidates[0][1]
+            self.logger.debug(f"[GET_DIRECTOR_ID] Multi-word match found: {best_match['name']} (ID: {best_match.get('id')}, popularity: {best_match.get('popularity')})")
+            return best_match.get("id")
+
+        # Third pass: look for names starting with search term
+        for result in data["results"]:
+            if result.get("name"):
+                result_name_lower = result["name"].lower().strip()
+                if result_name_lower.startswith(search_name_lower):
+                    self.logger.debug(f"[GET_DIRECTOR_ID] Prefix match found: {result['name']} (ID: {result.get('id')})")
+                    return result.get("id")
+
+        # Fall back to most popular result with known_for_department
+        best_result = None
+        best_popularity = -1
+        for result in data["results"]:
+            if result.get("id") and result.get("known_for_department"):
+                popularity = result.get("popularity", 0)
+                if popularity > best_popularity:
+                    best_popularity = popularity
+                    best_result = result
+
+        if best_result:
+            self.logger.debug(f"[GET_DIRECTOR_ID] Using most popular result: {best_result['name']} (ID: {best_result.get('id')}, popularity: {best_popularity})")
+            return best_result.get("id")
+
+        # Last resort: most popular result with ID
+        best_result = None
+        best_popularity = -1
+        for result in data["results"]:
+            if result.get("id"):
+                popularity = result.get("popularity", 0)
+                if popularity > best_popularity:
+                    best_popularity = popularity
+                    best_result = result
+
+        if best_result:
+            self.logger.debug(f"[GET_DIRECTOR_ID] Using most popular result (last resort): {best_result.get('name')} (ID: {best_result['id']}, popularity: {best_popularity})")
+            return best_result.get("id")
+
+        self.logger.debug(f"[GET_DIRECTOR_ID] No valid results for: {director_name}")
         return None
 
     def get_actor_filmography(self, actor_id: int) -> List[Dict]:

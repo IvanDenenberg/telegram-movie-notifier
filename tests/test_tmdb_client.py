@@ -157,6 +157,166 @@ class TestTMDbClient(unittest.TestCase):
         self.assertIsNone(result)
 
     @patch('backend.http_client.RequestManager.get')
+    def test_get_actor_id_multi_word_prefers_all_words(self, mock_get):
+        """Test that multi-word actor search prefers results with all keywords"""
+        # Simulates searching for "Anya Taylor-Joy" when multiple "Anya" results exist
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 1234,
+                    "name": "Anya",
+                    "popularity": 5.0,
+                    "known_for_department": "Acting"
+                },
+                {
+                    "id": 5678,
+                    "name": "Anya Taylor-Joy",
+                    "popularity": 50.0,  # More popular
+                    "known_for_department": "Acting"
+                }
+            ]
+        }
+
+        result = self.client.get_actor_id("Anya Taylor-Joy")
+
+        # Should return the one with both words, not the first one
+        self.assertEqual(result, 5678)
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_search_movie_multi_word_prefers_all_words(self, mock_get):
+        """Test that multi-word movie search prefers results with all keywords"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 1111,
+                    "title": "The Lord",
+                    "release_date": "2020-01-01",
+                    "popularity": 5.0
+                },
+                {
+                    "id": 2222,
+                    "title": "The Lord of the Rings",
+                    "release_date": "2001-12-19",
+                    "popularity": 100.0  # More popular
+                }
+            ]
+        }
+
+        result = self.client.search_movie("The Lord of the Rings")
+
+        # Should return the one with all three words, not the first one
+        self.assertEqual(result["id"], 2222)
+        self.assertEqual(result["title"], "The Lord of the Rings")
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_search_tv_prefers_most_popular(self, mock_get):
+        """Test that TV search prefers most popular result on fallback"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 3333,
+                    "name": "Breaking Bad",
+                    "first_air_date": "2008-01-20",
+                    "popularity": 20.0
+                },
+                {
+                    "id": 4444,
+                    "name": "Better Call Saul",
+                    "first_air_date": "2015-02-09",
+                    "popularity": 50.0  # More popular
+                }
+            ]
+        }
+
+        result = self.client.search_tv("Breaking")
+
+        # Should return the first prefix match
+        self.assertEqual(result["id"], 3333)
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_search_movie_fallback_uses_popularity(self, mock_get):
+        """Test that movie search fallback uses most popular result"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 5555,
+                    "title": "Avatar",
+                    "release_date": "2009-12-18",
+                    "popularity": 10.0
+                },
+                {
+                    "id": 6666,
+                    "title": "Avatar: The Way of Water",
+                    "release_date": "2022-12-16",
+                    "popularity": 100.0  # More popular
+                },
+                {
+                    "id": 7777,
+                    "title": "Avatars of Kali",
+                    "release_date": "2006-01-01",
+                    "popularity": 2.0
+                }
+            ]
+        }
+
+        result = self.client.search_movie("Avatar Legends")
+
+        # Should return most popular as fallback (none match all words)
+        self.assertEqual(result["id"], 6666)
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_search_movie_filters_by_year(self, mock_get):
+        """Test that movie search filters by year when provided"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 8888,
+                    "title": "Vladimir",
+                    "release_date": "2020-03-15",
+                    "popularity": 50.0
+                },
+                {
+                    "id": 9999,
+                    "title": "Vladimir",
+                    "release_date": "2026-06-20",
+                    "popularity": 30.0
+                }
+            ]
+        }
+
+        result = self.client.search_movie("Vladimir 2026")
+
+        # Should return 2026 release, not the more popular 2020 one
+        self.assertEqual(result["id"], 9999)
+        self.assertTrue(result["release_date"].startswith("2026"))
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_search_tv_filters_by_year(self, mock_get):
+        """Test that TV search filters by year when provided"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 1111,
+                    "name": "Breaking Bad",
+                    "first_air_date": "2008-01-20",
+                    "popularity": 100.0
+                },
+                {
+                    "id": 2222,
+                    "name": "Breaking Bad",
+                    "first_air_date": "2025-03-15",
+                    "popularity": 20.0
+                }
+            ]
+        }
+
+        result = self.client.search_tv("Breaking Bad 2025")
+
+        # Should return 2025 release, not the more popular 2008 one
+        self.assertEqual(result["id"], 2222)
+        self.assertTrue(result["first_air_date"].startswith("2025"))
+
+    @patch('backend.http_client.RequestManager.get')
     def test_api_request_error(self, mock_get):
         """Test handling API request errors"""
         mock_get.return_value = None
@@ -215,6 +375,49 @@ class TestTMDbClient(unittest.TestCase):
 
         # Verificar que api_key NO está en params
         assert "api_key" not in call_kwargs.get("params", {})
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_get_director_id(self, mock_get):
+        """Test getting director ID by name"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 3179,
+                    "name": "Quentin Tarantino",
+                    "known_for_department": "Directing"
+                }
+            ]
+        }
+
+        result = self.client.get_director_id("Quentin Tarantino")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result, 3179)
+        mock_get.assert_called_once()
+
+    @patch('backend.http_client.RequestManager.get')
+    def test_get_director_id_multi_word(self, mock_get):
+        """Test that director search prefers results with all keywords"""
+        mock_get.return_value = {
+            "results": [
+                {
+                    "id": 1234,
+                    "name": "John",
+                    "popularity": 5.0,
+                    "known_for_department": "Directing"
+                },
+                {
+                    "id": 5678,
+                    "name": "John Hughes",
+                    "popularity": 50.0,
+                    "known_for_department": "Directing"
+                }
+            ]
+        }
+
+        result = self.client.get_director_id("John Hughes")
+
+        self.assertEqual(result, 5678)
 
 
 
