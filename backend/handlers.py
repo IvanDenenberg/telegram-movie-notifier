@@ -18,41 +18,55 @@ class CommandHandler:
         """Handle /add command - add movie or TV show"""
         if not args:
             self.logger.warning("[HANDLE_ADD] No arguments provided")
-            return "❌ Por favor especifica el título: /add \"Título de película\""
+            return "❌ Por favor especifica el título: /add 'Título de película'"
 
         title = args[0]
         self.logger.debug(f"[HANDLE_ADD] Searching for title: {title}")
 
         # Try to search for movie first
         movie = self.tmdb.search_movie(title)
-        if movie:
-            # Verify it's a close match (avoid "Vladimir" → "Vladimir and Rosa")
-            if self._is_close_match(title, movie.get("title", "")):
-                self.logger.debug(f"[HANDLE_ADD] Close match verified: {movie.get('title')} (ID: {movie.get('id')})")
-                self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
-                self.logger.info(f"[HANDLE_ADD] Movie added: {movie.get('title')} (ID: {movie.get('id')})")
-                movie_id = movie.get("id")
-                tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
-                return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
-            else:
-                self.logger.debug(f"[HANDLE_ADD] Movie result rejected - not close enough match: {movie.get('title')}")
+        if movie and self._is_close_match(title, movie.get("title", "")):
+            self.logger.debug(f"[HANDLE_ADD] Close match verified: {movie.get('title')} (ID: {movie.get('id')})")
+            self.storage.add_movie(movie.get("title", title), movie.get("id"), media_type="movie")
+            self.logger.info(f"[HANDLE_ADD] Movie added: {movie.get('title')} (ID: {movie.get('id')})")
+            movie_id = movie.get("id")
+            tmdb_link = f"https://www.themoviedb.org/movie/{movie_id}"
+            return f"✅ '{movie.get('title', title)}' agregada a tu lista 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+
+        # No exact match - show top 3 movie options
+        movie_options = self.tmdb.get_search_results(title, "movie")
+        if movie_options:
+            self.logger.debug(f"[HANDLE_ADD] Showing {len(movie_options)} movie options")
+            response = f"¿Cuál de estas películas quisiste agregar?\n\n"
+            for i, opt in enumerate(movie_options, 1):
+                year = opt.get("release_date", "N/A")[:4]
+                response += f"{i}. {opt.get('title')} ({year}) - <code>/add_by_id {opt.get('id')}</code>\n"
+            response += f"\nO intenta: /add 'título completo' o /add '{title} año'"
+            return response
 
         # Try to search for TV show
         tv = self.tmdb.search_tv(title)
-        if tv:
-            # Verify it's a close match
-            if self._is_close_match(title, tv.get("name", "")):
-                self.logger.debug(f"[HANDLE_ADD] Close match verified (TV): {tv.get('name')} (ID: {tv.get('id')})")
-                self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
-                self.logger.info(f"[HANDLE_ADD] TV show added: {tv.get('name')} (ID: {tv.get('id')})")
-                tv_id = tv.get("id")
-                tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
-                return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
-            else:
-                self.logger.debug(f"[HANDLE_ADD] TV result rejected - not close enough match: {tv.get('name')}")
+        if tv and self._is_close_match(title, tv.get("name", "")):
+            self.logger.debug(f"[HANDLE_ADD] Close match verified (TV): {tv.get('name')} (ID: {tv.get('id')})")
+            self.storage.add_movie(tv.get("name", title), tv.get("id"), media_type="tv")
+            self.logger.info(f"[HANDLE_ADD] TV show added: {tv.get('name')} (ID: {tv.get('id')})")
+            tv_id = tv.get("id")
+            tmdb_link = f"https://www.themoviedb.org/tv/{tv_id}"
+            return f"✅ '{tv.get('name', title)}' agregada a tu lista 📺\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+
+        # No exact match - show top 3 TV options
+        tv_options = self.tmdb.get_search_results(title, "tv")
+        if tv_options:
+            self.logger.debug(f"[HANDLE_ADD] Showing {len(tv_options)} TV options")
+            response = f"¿Cuál de estas series quisiste agregar?\n\n"
+            for i, opt in enumerate(tv_options, 1):
+                year = opt.get("first_air_date", "N/A")[:4]
+                response += f"{i}. {opt.get('name')} ({year}) - <code>/add_by_id {opt.get('id')} tv</code>\n"
+            response += f"\nO intenta: /add 'título completo' o /add '{title} año'"
+            return response
 
         self.logger.warning(f"[HANDLE_ADD] No suitable result found for: {title}")
-        return f"❌ No encontré un resultado exacto para '{title}'.\n\nIntenta:\n• Con el título completo\n• Con año: '{title} 2024'\n• En inglés si es aplicable"
+        return f"❌ No encontré resultados para '{title}'.\n\nIntenta:\n• Con el título completo\n• Con año: '{title} 2024'\n• En inglés si es aplicable\n• O usa /add_by_id <ID> si conoces el ID en TMDb"
 
     def _is_close_match(self, search_term: str, result_title: str) -> bool:
         """Check if result title is close enough to search term"""

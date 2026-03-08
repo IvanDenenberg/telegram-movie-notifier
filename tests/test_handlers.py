@@ -46,6 +46,7 @@ class TestCommandHandler(unittest.TestCase):
         # Mock no result for both movie and TV
         mock_tmdb.search_movie.return_value = None
         mock_tmdb.search_tv.return_value = None
+        mock_tmdb.get_search_results.return_value = []
 
         handler = CommandHandler(self.api_key, self.storage_path)
         result = handler.handle_add(["NonexistentMovieXYZ"])

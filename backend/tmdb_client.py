@@ -103,6 +103,28 @@ class TMDbClient:
         self.logger.debug(f"[SEARCH_TV] No valid results for: {title}")
         return None
 
+    def get_search_results(self, title: str, media_type: str = "movie") -> List[Dict]:
+        """Get top search results without filtering"""
+        endpoint = f"/search/{media_type}"
+        self.logger.debug(f"[GET_SEARCH_RESULTS] Getting raw results for: {title} ({media_type})")
+
+        data = self._make_request(endpoint, {"query": title})
+        if not data or "results" not in data:
+            return []
+
+        results = []
+        key_name = "title" if media_type == "movie" else "name"
+        key_date = "release_date" if media_type == "movie" else "first_air_date"
+
+        for result in data["results"]:
+            if result.get(key_name) and result.get(key_date):
+                results.append(result)
+                if len(results) >= 3:  # Limit to top 3
+                    break
+
+        self.logger.debug(f"[GET_SEARCH_RESULTS] Returning {len(results)} results")
+        return results
+
     def get_actor_id(self, actor_name: str) -> Optional[int]:
         """Get actor ID by name - prefers exact matches"""
         self.logger.debug(f"[GET_ACTOR_ID] Searching for actor: {actor_name}")
