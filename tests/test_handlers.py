@@ -135,6 +135,7 @@ class TestCommandHandler(unittest.TestCase):
         # Mock empty data
         mock_storage.get_movies.return_value = []
         mock_storage.get_actors.return_value = []
+        mock_storage.get_directors.return_value = []
 
         handler = CommandHandler(self.api_key, self.storage_path)
         result = handler.handle_list()
@@ -372,6 +373,61 @@ class TestCommandHandler(unittest.TestCase):
         self.assertIn("❌", result)
         self.assertIn("No encontré", result)
         mock_storage.add_director.assert_not_called()
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_list_shows_directors(self, mock_tmdb_class, mock_storage_class):
+        """Test that /list shows directors"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock data with directors
+        mock_storage.get_movies.return_value = [
+            {"title": "Dune", "id": 438631, "type": "movie"}
+        ]
+        mock_storage.get_actors.return_value = [
+            {"name": "Brad Pitt", "id": 287}
+        ]
+        mock_storage.get_directors.return_value = [
+            {"name": "Quentin Tarantino", "id": 3179}
+        ]
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_list()
+
+        # Verify directors are shown
+        self.assertIn("Brad Pitt", result)
+        self.assertIn("Quentin Tarantino", result)
+        self.assertIn("Directores Monitoreados", result)
+        self.assertIn("🎬", result)
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_remove_director(self, mock_tmdb_class, mock_storage_class):
+        """Test removing a director"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock find and remove
+        mock_storage.get_movies.return_value = []
+        mock_storage.get_actors.return_value = []
+        mock_storage.get_directors.return_value = [
+            {"name": "Quentin Tarantino", "id": 3179}
+        ]
+        mock_storage.remove_director.return_value = True
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_remove(["Quentin Tarantino"])
+
+        # Verify
+        self.assertIn("✅", result)
+        self.assertIn("removida", result)
+        self.assertIn("Quentin Tarantino", result)
+        mock_storage.remove_director.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -152,9 +152,10 @@ class CommandHandler:
         return f"{response}|||UNDO_BUTTON||{undo_action}"
 
     def handle_list(self, args: List[str] = None) -> str:
-        """Handle /list command - show movies, actors, or both"""
+        """Handle /list command - show movies, actors, directors, or any combination"""
         all_items = self.storage.get_movies()
         actors = self.storage.get_actors()
+        directors = self.storage.get_directors()
 
         # Separar películas y series
         movies = [m for m in all_items if m.get("type") == "movie"]
@@ -166,10 +167,10 @@ class CommandHandler:
             filter_type = args[0].lower()
 
         # DEBUG LOGS
-        logger.info(f"[/list] BASE DE DATOS - Películas: {len(movies)}, Series: {len(tv_shows)}, Actores: {len(actors)}")
+        logger.info(f"[/list] BASE DE DATOS - Películas: {len(movies)}, Series: {len(tv_shows)}, Actores: {len(actors)}, Directores: {len(directors)}")
         logger.info(f"[/list] Filtro: '{filter_type}'")
 
-        if not movies and not tv_shows and not actors:
+        if not movies and not tv_shows and not actors and not directors:
             return "No tienes nada en tu lista... 📋"
 
         result = "📋 <b>Tu Lista</b>\n\n"
@@ -201,17 +202,27 @@ class CommandHandler:
                 result += f"    <code>/remove \"{name}\"</code>\n"
             result += "\n"
 
+        # Mostrar directores si filter_type es "all" o "directors"
+        if filter_type in ["all", "directors"] and directors:
+            result += "<b>🎬 Directores Monitoreados:</b>\n"
+            for director in directors:
+                name = director.get('name', 'Unknown')
+                result += f"  • {name}\n"
+                result += f"    <code>/remove \"{name}\"</code>\n"
+            result += "\n"
+
         # Mostrar opciones de filtro
         if filter_type == "all":
             result += "<b>Filtros:</b>\n"
             result += "/list movies - solo películas\n"
             result += "/list series - solo series\n"
-            result += "/list actors - solo actores"
+            result += "/list actors - solo actores\n"
+            result += "/list directors - solo directores"
 
         return result
 
     def handle_remove(self, args: List[str]) -> str:
-        """Handle /remove command - remove movie, show, or actor"""
+        """Handle /remove command - remove movie, show, actor, or director"""
         if not args:
             self.logger.warning("[HANDLE_REMOVE] No arguments provided")
             return "❌ Por favor especifica qué remover: /remove \"Título o nombre\""
@@ -241,6 +252,16 @@ class CommandHandler:
                 if self.storage.remove_actor(actor.get("id")):
                     self.logger.info(f"[HANDLE_REMOVE] Actor removed: {actor.get('name')} (ID: {actor.get('id')})")
                     return f"✅ '{actor.get('name')}' removida de tu lista"
+
+        # Search in directors
+        directors = self.storage.get_directors()
+
+        for director in directors:
+            director_name_lower = director.get("name", "").lower()
+            if director_name_lower == search_term:
+                if self.storage.remove_director(director.get("id")):
+                    self.logger.info(f"[HANDLE_REMOVE] Director removed: {director.get('name')} (ID: {director.get('id')})")
+                    return f"✅ '{director.get('name')}' removida de tu lista"
 
         self.logger.warning(f"[HANDLE_REMOVE] Item not found: '{args[0]}'")
         return f"❌ No encontré '{args[0]}' en tu lista."
