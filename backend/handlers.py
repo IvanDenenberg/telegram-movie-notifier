@@ -18,7 +18,7 @@ class CommandHandler:
         """Handle /add command - add movie or TV show"""
         if not args:
             self.logger.warning("[HANDLE_ADD] No arguments provided")
-            return "❌ Por favor especifica el título: /add 'Título de película'"
+            return "❌ Por favor especifica el título: /add \"Título de película\""
 
         title = args[0]
         self.logger.debug(f"[HANDLE_ADD] Searching for title: {title}")
@@ -43,7 +43,7 @@ class CommandHandler:
             for i, opt in enumerate(movie_options, 1):
                 year = opt.get("release_date", "N/A")[:4]
                 response += f"{i}. {opt.get('title')} ({year}) - <code>/add_by_id {opt.get('id')}</code>\n"
-            response += f"\nO intenta: /add 'título completo' o /add '{title} año'"
+            response += f"\nO intenta: /add \"título completo\" o /add \"{title} año\""
             return response
 
         # Try to search for TV show
@@ -66,11 +66,11 @@ class CommandHandler:
             for i, opt in enumerate(tv_options, 1):
                 year = opt.get("first_air_date", "N/A")[:4]
                 response += f"{i}. {opt.get('name')} ({year}) - <code>/add_by_id {opt.get('id')} tv</code>\n"
-            response += f"\nO intenta: /add 'título completo' o /add '{title} año'"
+            response += f"\nO intenta: /add \"título completo\" o /add \"{title} año\""
             return response
 
         self.logger.warning(f"[HANDLE_ADD] No suitable result found for: {title}")
-        return f"❌ No encontré resultados para '{title}'.\n\nIntenta:\n• Con el título completo\n• Con año: '{title} 2024'\n• En inglés si es aplicable\n• O usa /add_by_id <ID> si conoces el ID en TMDb"
+        return f"❌ No encontré resultados para '{title}'.\n\nIntenta:\n• Con el título completo\n• Con año: /add \"{title} 2024\"\n• En inglés si es aplicable\n• O usa /add_by_id <ID> si conoces el ID en TMDb"
 
     def _is_close_match(self, search_term: str, result_title: str) -> bool:
         """Check if result title is close enough to search term"""
@@ -100,7 +100,7 @@ class CommandHandler:
             self.logger.warning("[HANDLE_ADD_ACTOR] No arguments provided")
             return "❌ Por favor especifica el nombre del actor: /add_actor \"Nombre\""
 
-        actor_name = args[0]
+        actor_name = args[0].strip().strip('"\'"\"\'')
         self.logger.debug(f"[HANDLE_ADD_ACTOR] Searching for actor: {actor_name}")
 
         actor_id = self.tmdb.get_actor_id(actor_name)
