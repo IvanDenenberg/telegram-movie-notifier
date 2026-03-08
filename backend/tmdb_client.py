@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Dict, List
 from backend.http_client import RequestManager
 
@@ -7,6 +8,7 @@ class TMDbClient:
 
     def __init__(self, api_key: str):
         """Initialize TMDb client with API key"""
+        self.logger = logging.getLogger(__name__)
         self.api_key = api_key
         self.request_manager = RequestManager(timeout=5)
 

@@ -1,8 +1,11 @@
+import logging
 import re
 from typing import Dict, Any
 
 
 class MessageParser:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
     def parse(self, message: str) -> Dict[str, Any]:
         """
         Parse a message and determine if it's a command or free text.

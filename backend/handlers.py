@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class CommandHandler:
     def __init__(self, tmdb_api_key: str, storage_path: str):
         """Initialize command handler with TMDb API key and storage path"""
+        self.logger = logging.getLogger(__name__)
         self.tmdb = TMDbClient(tmdb_api_key)
         self.storage = Storage(storage_path)
 

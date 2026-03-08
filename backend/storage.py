@@ -1,3 +1,4 @@
+import logging
 import json
 from pathlib import Path
 from datetime import datetime
@@ -6,6 +7,7 @@ from typing import List, Dict
 
 class Storage:
     def __init__(self, path: str = "data/movies.json"):
+        self.logger = logging.getLogger(__name__)
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,3 +1,4 @@
+import logging
 from typing import List, Dict, Callable, Optional
 from datetime import datetime, timedelta
 from backend.storage import Storage
@@ -7,6 +8,7 @@ from backend.tmdb_client import TMDbClient
 class Notifier:
     def __init__(self, tmdb_api_key: str, storage_path: str):
         """Inicializa el Notifier con TMDb API key y ruta de storage"""
+        self.logger = logging.getLogger(__name__)
         self.tmdb_api_key = tmdb_api_key
         self.storage = Storage(storage_path)
         self.tmdb_client = TMDbClient(tmdb_api_key)
