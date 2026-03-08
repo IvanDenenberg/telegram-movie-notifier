@@ -44,9 +44,9 @@ class MessageParser:
         """
         Extract arguments from quoted strings in the command.
 
-        Finds all quoted strings and returns them as a list.
+        Finds all quoted strings (double or single quotes) and returns them as a list.
         """
-        # Match quoted strings (double quotes)
-        pattern = r'"([^"]*)"'
+        # Match quoted strings (double or single quotes)
+        pattern = r'["\']([^"\']*)["\']'
         matches = re.findall(pattern, message)
         return matches

@@ -202,7 +202,8 @@ Usa /help para ver todos los comandos disponibles."""
             }
 
             response = await self._handle_command(parsed)
-            await update.message.reply_text(response, parse_mode="HTML")
+            if update.message:
+                await update.message.reply_text(response, parse_mode="HTML")
 
         return handler
 
