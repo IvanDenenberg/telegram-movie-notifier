@@ -111,19 +111,21 @@ Usa /help para ver todos los comandos disponibles."""
             elif command == "add_actor":
                 return self.command_handler.handle_add_actor(args)
             elif command == "list":
-                return self.command_handler.handle_list()
+                return self.command_handler.handle_list(args)
             elif command == "remove":
                 return self.command_handler.handle_remove(args)
             elif command == "help":
                 return self.command_handler.handle_help()
+            elif command == "upcoming":
+                return self.command_handler.handle_upcoming(args)
             else:
                 return f"❌ Comando desconocido: /{command}. Usa /help para ver los comandos disponibles."
         except Exception as e:
             self.logger.error(f"Error en comando {command}: {e}")
             return f"❌ Error ejecutando comando: {str(e)}"
 
-    async def check_releases_job(self, context: ContextTypes.DEFAULT_TYPE):
-        """Job que corre semanalmente para chequear nuevos estrenos"""
+    async def check_releases_job(self):
+        """Job que corre cada domingo a las 12 PM para chequear nuevos estrenos"""
         try:
             self.logger.info("Ejecutando check de nuevos estrenos...")
 
@@ -132,18 +134,16 @@ Usa /help para ver todos los comandos disponibles."""
 
             if releases and self.telegram_user_id:
                 for release in releases:
-                    # Determinar tipo de media
-                    if "title" in release:
-                        media_type = "movie"
-                    else:
-                        media_type = "tv"
+                    # Obtener datos del release
+                    release_data = release.get("data", {})
+                    media_type = release.get("type", "movie")
 
                     # Formatear notificación
-                    message = self.notifier.format_notification(release, media_type)
+                    message = self.notifier.format_notification(release_data, media_type)
 
                     # Enviar notificación
                     try:
-                        await context.bot.send_message(
+                        await self.app.bot.send_message(
                             chat_id=self.telegram_user_id,
                             text=message,
                             parse_mode="HTML"
@@ -155,21 +155,22 @@ Usa /help para ver todos los comandos disponibles."""
         except Exception as e:
             self.logger.error(f"Error en check_releases_job: {e}")
 
-    async def setup_scheduler(self):
-        """Configurar APScheduler para ejecutar job cada 7 días"""
+    def setup_scheduler(self):
+        """Configurar APScheduler para ejecutar job cada domingo a las 12 PM"""
         scheduler = AsyncIOScheduler()
 
-        # Agregar job cada 7 días (604800 segundos)
+        # Agregar job cada domingo a las 12:00 PM
         scheduler.add_job(
             self.check_releases_job,
-            'interval',
-            seconds=604800,  # 7 días
-            args=[self.app.job_queue],
+            'cron',
+            day_of_week=6,  # 6 = domingo (0=lunes, 6=domingo)
+            hour=12,
+            minute=0,
             id='check_releases_weekly'
         )
 
         scheduler.start()
-        self.logger.info("Scheduler configurado para ejecutar cada 7 días")
+        self.logger.info("Scheduler configurado para ejecutar cada domingo a las 12:00 PM")
 
     async def setup_handlers(self):
         """Agregar handlers de Telegram"""
@@ -182,6 +183,7 @@ Usa /help para ver todos los comandos disponibles."""
         self.app.add_handler(CommandHandler("list", self._command_wrapper("list")))
         self.app.add_handler(CommandHandler("remove", self._command_wrapper("remove")))
         self.app.add_handler(CommandHandler("help", self._command_wrapper("help")))
+        self.app.add_handler(CommandHandler("upcoming", self._command_wrapper("upcoming")))
 
         # Handler para mensajes de texto libre
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
@@ -212,6 +214,9 @@ Usa /help para ver todos los comandos disponibles."""
 
             # Setup handlers
             await self.setup_handlers()
+
+            # Configurar scheduler
+            self.setup_scheduler()
 
             # Iniciar bot
             self.logger.info("Iniciando Movie Notifier Bot...")
