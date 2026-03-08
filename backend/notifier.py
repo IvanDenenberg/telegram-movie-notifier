@@ -134,6 +134,7 @@ class Notifier:
         Returns:
             Dict with keys: "movies", "series", "actors", each containing list of releases
         """
+        self.logger.debug(f"[NOTIFIER] Checking releases for next {days} days (filter: {filter_type})")
         result = {"movies": [], "series": [], "actors": []}
 
         today = datetime.now().date()
@@ -193,4 +194,5 @@ class Notifier:
         for key in result:
             result[key].sort(key=lambda x: x["release_date"])
 
+        self.logger.debug(f"[NOTIFIER] Found {len(result['movies'])} movies, {len(result['series'])} series, {len(result.get('actors', []))} actor projects")
         return result

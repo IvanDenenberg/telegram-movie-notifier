@@ -36,6 +36,7 @@ class Storage:
 
     def add_movie(self, title: str, tmdb_id: int, media_type: str = "movie"):
         """Agrega una película o serie (media_type: 'movie' o 'tv')"""
+        self.logger.debug(f"[STORAGE.ADD_MOVIE] Adding {media_type}: {title} (ID: {tmdb_id})")
         data = self._load_data()
 
         # Evita duplicados
@@ -50,9 +51,11 @@ class Storage:
         }
         data["movies"].append(movie)
         self._save_data(data)
+        self.logger.debug(f"[STORAGE.ADD_MOVIE] Successfully saved to storage")
 
     def add_actor(self, name: str, tmdb_id: int):
         """Agrega un actor"""
+        self.logger.debug(f"[STORAGE.ADD_ACTOR] Adding actor: {name} (ID: {tmdb_id})")
         data = self._load_data()
 
         # Evita duplicados
@@ -66,9 +69,11 @@ class Storage:
         }
         data["actors"].append(actor)
         self._save_data(data)
+        self.logger.debug(f"[STORAGE.ADD_ACTOR] Successfully saved to storage")
 
     def remove_movie(self, tmdb_id: int) -> bool:
         """Elimina una película"""
+        self.logger.debug(f"[STORAGE.REMOVE_MOVIE] Removing movie ID: {tmdb_id}")
         data = self._load_data()
 
         initial_length = len(data["movies"])
@@ -81,6 +86,7 @@ class Storage:
 
     def remove_actor(self, tmdb_id: int) -> bool:
         """Elimina un actor"""
+        self.logger.debug(f"[STORAGE.REMOVE_ACTOR] Removing actor ID: {tmdb_id}")
         data = self._load_data()
 
         initial_length = len(data["actors"])
