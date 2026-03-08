@@ -330,6 +330,49 @@ class TestCommandHandler(unittest.TestCase):
             f"Expected log output to contain 'dune' or '438632', but got: {cm.output}"
         )
 
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_director(self, mock_tmdb_class, mock_storage_class):
+        """Test adding a director successfully"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock director ID
+        mock_tmdb.get_director_id.return_value = 3179
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_director(["Quentin Tarantino"])
+
+        # Verify response
+        self.assertIn("Monitoreando a Quentin Tarantino", result)
+        self.assertIn("🎬", result)
+        self.assertIn("/remove", result)
+
+        # Verify stored
+        mock_storage.add_director.assert_called_once_with("Quentin Tarantino", 3179)
+
+    @patch('backend.handlers.Storage')
+    @patch('backend.handlers.TMDbClient')
+    def test_handle_add_director_not_found(self, mock_tmdb_class, mock_storage_class):
+        """Test adding director when not found"""
+        mock_tmdb = MagicMock()
+        mock_tmdb_class.return_value = mock_tmdb
+        mock_storage = MagicMock()
+        mock_storage_class.return_value = mock_storage
+
+        # Mock no director found
+        mock_tmdb.get_director_id.return_value = None
+
+        handler = CommandHandler(self.api_key, self.storage_path)
+        result = handler.handle_add_director(["UnknownDirector"])
+
+        # Verify error response
+        self.assertIn("❌", result)
+        self.assertIn("No encontré", result)
+        mock_storage.add_director.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

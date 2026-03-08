@@ -129,6 +129,28 @@ class CommandHandler:
         undo_action = f'/remove "{actor_name}"'
         return f"{response}|||UNDO_BUTTON||{undo_action}"
 
+    def handle_add_director(self, args: List[str]) -> str:
+        """Handle /add_director command - monitor director's projects"""
+        if not args:
+            self.logger.warning("[HANDLE_ADD_DIRECTOR] No arguments provided")
+            return "❌ Por favor especifica el nombre del director: /add_director \"Nombre\""
+
+        director_name = args[0].strip().strip('"\'"\"\'')
+        self.logger.debug(f"[HANDLE_ADD_DIRECTOR] Searching for director: {director_name}")
+
+        director_id = self.tmdb.get_director_id(director_name)
+
+        if not director_id:
+            self.logger.warning(f"[HANDLE_ADD_DIRECTOR] Director not found: {director_name}")
+            return f"❌ No encontré al director '{director_name}' en TMDb."
+
+        self.storage.add_director(director_name, director_id)
+        self.logger.info(f"[HANDLE_ADD_DIRECTOR] Director added: {director_name} (ID: {director_id})")
+        tmdb_link = f"https://www.themoviedb.org/person/{director_id}"
+        response = f"✅ Monitoreando a {director_name} 🎬\n<a href='{tmdb_link}'>Ver en TMDb</a>"
+        undo_action = f'/remove "{director_name}"'
+        return f"{response}|||UNDO_BUTTON||{undo_action}"
+
     def handle_list(self, args: List[str] = None) -> str:
         """Handle /list command - show movies, actors, or both"""
         all_items = self.storage.get_movies()
