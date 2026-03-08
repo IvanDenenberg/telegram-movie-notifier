@@ -385,3 +385,57 @@ def test_get_releases_in_range_filter_movies(mock_storage, mock_tmdb):
     assert "movies" in releases
     assert releases["movies"]  # No vacío
     assert releases.get("series", []) == []
+
+
+@patch('backend.notifier.TMDbClient.get_director_filmography')
+@patch('backend.notifier.Storage')
+def test_check_new_releases_director_filmography(mock_storage, mock_filmography):
+    """Test que detecta nueva filmografía de directores"""
+    mock_storage_instance = MagicMock()
+    mock_storage.return_value = mock_storage_instance
+    mock_storage_instance.get_movies.return_value = []
+    mock_storage_instance.get_actors.return_value = []
+    mock_storage_instance.get_directors.return_value = [{"id": 3179, "name": "Quentin Tarantino"}]
+    mock_storage_instance.is_notified.return_value = False
+
+    mock_filmography.return_value = [
+        {
+            "id": 550,
+            "title": "Fight Club",
+            "release_date": "1999-10-15"
+        }
+    ]
+
+    notifier = Notifier("test_key", "fake_storage.json")
+    releases = notifier.check_new_releases()
+
+    assert len(releases) > 0
+    assert any(r["title"] == "Fight Club" for r in releases)
+    mock_storage_instance.mark_notified.assert_called()
+
+
+@patch('backend.notifier.TMDbClient.get_director_tv_credits')
+@patch('backend.notifier.Storage')
+def test_check_new_releases_director_tv(mock_storage, mock_tv_credits):
+    """Test que detecta nuevas series de directores"""
+    mock_storage_instance = MagicMock()
+    mock_storage.return_value = mock_storage_instance
+    mock_storage_instance.get_movies.return_value = []
+    mock_storage_instance.get_actors.return_value = []
+    mock_storage_instance.get_directors.return_value = [{"id": 2288, "name": "Vince Gilligan"}]
+    mock_storage_instance.is_notified.return_value = False
+
+    mock_tv_credits.return_value = [
+        {
+            "id": 1399,
+            "name": "Breaking Bad",
+            "first_air_date": "2008-01-20"
+        }
+    ]
+
+    notifier = Notifier("test_key", "fake_storage.json")
+    releases = notifier.check_new_releases()
+
+    assert len(releases) > 0
+    assert any(r["name"] == "Breaking Bad" for r in releases)
+    mock_storage_instance.mark_notified.assert_called()

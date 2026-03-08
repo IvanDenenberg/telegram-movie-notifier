@@ -68,6 +68,35 @@ class Notifier:
                     new_releases.append(release)
                     self.storage.mark_notified(release_key)
 
+        # Obtener directores seguidos
+        directors = self.storage.get_directors()
+        for director in directors:
+            # Obtener filmografía del director (solo donde dirige)
+            filmography = self.tmdb_client.get_director_filmography(director["id"])
+            for release in filmography:
+                release_key = self._make_release_key(
+                    release["id"],
+                    release.get("release_date", "")
+                )
+
+                # Verificar si ya fue notificado
+                if not self.storage.is_notified(release_key):
+                    new_releases.append(release)
+                    self.storage.mark_notified(release_key)
+
+            # Obtener series del director (solo donde dirige)
+            tv_credits = self.tmdb_client.get_director_tv_credits(director["id"])
+            for release in tv_credits:
+                release_key = self._make_release_key(
+                    release["id"],
+                    release.get("first_air_date", "")
+                )
+
+                # Verificar si ya fue notificado
+                if not self.storage.is_notified(release_key):
+                    new_releases.append(release)
+                    self.storage.mark_notified(release_key)
+
         return new_releases
 
     def _is_related_to_movie(self, release: Dict, movie: Dict) -> bool:
